@@ -8,6 +8,10 @@ module Daml.Script
   , submitMustFail
   , submitMulti
   , submitMultiMustFail
+  , submitTree
+  , selectRoot
+  , selectChild
+  , createdCid
   , query
   , queryContractId
   , queryContractKey
@@ -36,6 +40,7 @@ module Daml.Script
 
 import DA.Functor
 import DA.NonEmpty (NonEmpty(..))
+import DA.List
 import DA.Optional
 import DA.Stack
 import DA.Time
@@ -75,6 +80,7 @@ newtype Commands a = Commands (Ap CommandsF a)
 data ScriptF a
   = Submit (SubmitCmd a)
   | SubmitMustFail (SubmitMustFailCmd a)
+  | SubmitTree (SubmitTreePayload a)
   | Query (QueryACS a)
   | QueryContractId (QueryContractIdPayload a)
   | QueryContractKey (QueryContractKeyPayload a)
@@ -452,3 +458,96 @@ lift m = Script with
 -- it is implemented using `script` or not.
 script : Script a -> Script a
 script = identity
+
+data TransactionTree = TransactionTree
+  with
+    rootEvents: [TreeEvent]
+  deriving Show
+
+selectRoot : Int -> TransactionTree -> TreeEvent
+selectRoot i (TransactionTree evs) = evs !! i
+
+selectChild : Int -> TreeEvent -> TreeEvent
+selectChild i (ExercisedEvent (Exercised evs)) = evs !! i
+selectChild _ (CreatedEvent _) = error "Called selectChild on CreatedEvent"
+
+createdCid : Template t => TreeEvent -> ContractId t
+createdCid (ExercisedEvent _) =  error "Called createdCid on ExercisedEvent"
+createdCid (CreatedEvent (Created cid)) = fromSome $ fromAnyContractId cid
+
+data TreeEvent
+  = CreatedEvent Created
+  | ExercisedEvent Exercised
+  deriving Show
+
+data Created = Created
+  with
+    contractId : AnyContractId
+  deriving Show
+
+data Exercised = Exercised with
+--  contractId : AnyContractId
+--  choice : Text
+--  choiceArgument : AnyChoice
+--  consuming : Bool
+  childEvents: [TreeEvent]
+
+instance Show Exercised where
+  showsPrec d (Exercised {- cid choice _arg consuming -} childEvents) =
+    showParen (d > app_prec) $
+    showString "Exercised {" .
+{-    showString "contractId = " .
+    showsPrec 0 cid .
+    showCommaSpace .
+    showString "consuming = " .
+    showsPrec 0 choice .
+    showCommaSpace .
+    showString "consuming = " .
+    showsPrec 0 consuming .
+    showCommaSpace . -}
+    showString "childEvents = " .
+    showsPrec 0 childEvents .
+    showString "}"
+    where app_prec = 10
+
+data AnyContractId = AnyContractId
+  { templateId : TemplateTypeRep
+  , contractId : ContractId ()
+  } deriving Eq
+
+instance Show AnyContractId where
+  showsPrec d (AnyContractId _ cid) = showParen (d > app_prec) $
+    showString "AnyContractId " . showsPrec (app_prec +1) cid
+    where app_prec = 10
+
+fromAnyContractId : forall t. Template t => AnyContractId -> Optional (ContractId t)
+fromAnyContractId cid
+  | cid.templateId == templateTypeRep @t = Some (coerceContractId cid.contractId)
+  | otherwise = None
+
+data SubmitTreePayload a = SubmitTreePayload
+  with
+    actAs : NonEmpty Party
+    readAs : [Party]
+    commands : Commands ()
+    continue : TransactionTree -> a
+    locations : [(Text, SrcLoc)]
+  deriving Functor
+
+submitTree : HasCallStack => Party -> Commands a -> Script TransactionTree
+submitTree p cmds =
+  lift $ Free $ fmap pure $ SubmitTree $ SubmitTreePayload with
+    actAs = NonEmpty p []
+    readAs = []
+    commands = void cmds
+    locations = getCallStack callStack
+    continue = identity
+
+submitTreeMulti : HasCallStack => [Party] -> [Party] -> Commands a -> Script TransactionTree
+submitTreeMulti actAs readAs cmds =
+  lift $ Free $ fmap pure $ SubmitTree $ SubmitTreePayload with
+    actAs = actAsNonEmpty actAs
+    readAs = readAs
+    commands = void cmds
+    locations = getCallStack callStack
+    continue = identity

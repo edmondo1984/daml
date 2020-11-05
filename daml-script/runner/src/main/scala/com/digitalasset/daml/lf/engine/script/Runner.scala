@@ -589,6 +589,36 @@ class Runner(compiledPackages: CompiledPackages, script: Script.Action, timeMode
                     } yield v
                   }
                 }
+              case "SubmitTree" =>
+                m2c("record with 4 fields") {
+                  submitPayload.andThen { payload =>
+                    for {
+                      actAs <- Converter
+                        .toFuture(payload.actAs.traverse(Converter.toParty(_)))
+                        .map(toOneAndSet(_))
+                      readAs <- Converter
+                        .toFuture(payload.readAs.traverse(Converter.toParty(_)))
+                        .map(_.toSet)
+                      commands <- Converter.toFuture(
+                        Converter
+                          .toCommands(extendedCompiledPackages, payload.freeAp)
+                      )
+                      client <- Converter.toFuture(
+                        clients
+                          .getPartiesParticipant(actAs)
+                      )
+                      commitLocation <- payload.loc cata (sLoc =>
+                        Converter.toFuture(Converter.toOptionLocation(knownPackages, sLoc)),
+                      Future(None))
+                      submitRes <- client.submitTree(actAs, readAs, commands, commitLocation)
+                      res <- Converter.toFuture(
+                        Converter.translateTransactionTree(script.scriptIds, submitRes)
+                      )
+                      _ = copyTracelog(client)
+                      v <- run(SEApp(SEValue(payload.continue), Array(SEValue(res))))
+                    } yield v
+                  }
+                }
               case "Query" =>
                 m2c("record with 3 fields") {
                   case SRecord(_, _, JavaList(sParties, sTplId, continue)) =>
