@@ -28,16 +28,17 @@ let shared = rec {
     python3
     toxiproxy
     zip
+    go
     ;
 
   scala = pkgs.scala_2_12;
 
   # We need to have a file in GOPATH that we can use as
   # root_file in go_wrap_sdk.
-  go = pkgs.go.overrideAttrs (oldAttrs: {
-    doCheck = false;
-    postFixup = ''touch $out/share/go/ROOT'';
-  });
+  # go = pkgs.go.overrideAttrs (oldAttrs: {
+  #   doCheck = false;
+  #   postFixup = ''touch $out/share/go/ROOT'';
+  # });
 
   # GHC configured for static linking only.
   ghcStaticPkgs = (import ./ghc.nix { inherit pkgs; }).override {
