@@ -72,7 +72,7 @@ in rec {
     # wrapper works.
     ibazel = pkgs.bazel-watcher;
 
-    scala = (bazel_dependencies.scala.override { jre = jdk; }).overrideAttrs (attrs: {
+    scala = bazel_dependencies.scala.overrideAttrs (attrs: {
       buildInputs = attrs.buildInputs ++ [ pkgs.makeWrapper ];
       installPhase = attrs.installPhase + ''
         wrapProgram $out/bin/scala    --add-flags "-nobootcp"
