@@ -33,10 +33,6 @@ export NIX_CONF_DIR=$PWD/dev-env/etc
 
 df -h
 
-rm -rf .bazel-cache
-
-nix-store --gc
-
 step "Building dev-env dependencies"
 
 nix-build nix/bazel.nix -A go --no-out-link
