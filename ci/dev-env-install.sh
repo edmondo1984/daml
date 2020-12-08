@@ -39,6 +39,8 @@ nix-store --gc
 
 step "Building dev-env dependencies"
 
+nix-build nix/bazel.nix -A go --no-out-link
+
 # Nix cache downloads can sometimes be flaky and end with "unexpected end-of-file" so we
 # repeat this a few times. There does not seem to be an option that we can pass to nix
 # to make it retry itself. See https://github.com/NixOS/nix/issues/2794 for the issue requesting
