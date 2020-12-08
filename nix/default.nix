@@ -116,8 +116,6 @@ in rec {
     license-checker =
       (import ./tools/license-checker { inherit pkgs; nodejs = tools.node; }).license-checker;
 
-    chromedriver = pkgs.chromedriver;
-
     # Python development
     pip3        = pkgs.python37Packages.pip;
     python      = python37;
