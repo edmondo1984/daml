@@ -30,7 +30,7 @@ let
       installPhase = ''
         mkdir -p $out
         PREFIX=$out make install
-        wrapProgram $out/bin/pg_tmp --prefix PATH : ${pkgs.postgresql_9_6}/bin:$out/bin
+        wrapProgram $out/bin/pg_tmp --prefix PATH : ${pkgs.postgresql_11}/bin:$out/bin
       '';
     });
     bazel = pkgs.bazel.overrideAttrs(oldAttrs: {
