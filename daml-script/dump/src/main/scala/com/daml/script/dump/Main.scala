@@ -75,17 +75,25 @@ object Main {
         .foldMap(treeRefs(_))
         .map(i => PackageId.assertFromString(i.packageId))
       pkgs <- Dependencies.fetchPackages(client, pkgRefs.toList)
-      _ = writeDump(config.sdkVersion, config.outputPath, trees, pkgRefs, pkgs)
+      _ = writeDump(
+        config.sdkVersion,
+        config.damlScriptLib,
+        config.outputPath,
+        trees,
+        pkgRefs,
+        pkgs,
+      )
     } yield ()
 
   def writeDump(
       sdkVersion: String,
+      damlScriptLib: String,
       targetDir: Path,
       trees: Seq[TransactionTree],
       pkgRefs: Set[PackageId],
       pkgs: Map[PackageId, (ByteString, Ast.Package)],
   ) = {
-    val dir = Files.createDirectory(targetDir)
+    val dir = Files.createDirectories(targetDir)
     Files.write(
       dir.resolve("Dump.daml"),
       Encode.encodeTransactionTreeStream(trees).render(80).getBytes(StandardCharsets.UTF_8),
@@ -103,7 +111,7 @@ object Main {
          |name: dump
          |version: 1.0.0
          |source: .
-         |dependencies: [daml-stdlib, daml-prim, daml-script]
+         |dependencies: [daml-stdlib, daml-prim, $damlScriptLib]
          |data-dependencies: [${depFiles.mkString(",")}]
          |""".stripMargin.getBytes(StandardCharsets.UTF_8),
     )

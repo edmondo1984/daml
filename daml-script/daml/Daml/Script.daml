@@ -9,6 +9,7 @@ module Daml.Script
   , submitMulti
   , submitMultiMustFail
   , submitTree
+  , submitTreeMulti
   , selectRoot
   , selectChild
   , createdCid

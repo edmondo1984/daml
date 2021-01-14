@@ -12,6 +12,7 @@ final case class Config(
     parties: List[String],
     outputPath: Path,
     sdkVersion: String,
+    damlScriptLib: String,
 )
 
 object Config {
@@ -43,5 +44,6 @@ object Config {
     parties = List(),
     outputPath = null,
     sdkVersion = "",
+    damlScriptLib = "daml-script",
   )
 }

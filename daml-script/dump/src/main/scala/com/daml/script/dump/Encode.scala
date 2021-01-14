@@ -158,7 +158,9 @@ private[dump] object Encode {
     val rootEvs = tree.rootEventIds.map(tree.eventsById(_).kind)
     val submitters = rootEvs.flatMap(evParties(_)).toSet
     val cids = treeCids(tree)
-    (Doc.text("tree <- submitTreeMulti ") + encodeParties(partyMap, submitters) + Doc.text(" do") /
+    (Doc.text("tree <- submitTreeMulti ") + encodeParties(partyMap, submitters) + Doc.text(
+      " [] do"
+    ) /
       Doc.stack(rootEvs.map(ev => encodeEv(partyMap, cidMap, ev)))).hang(2) /
       Doc.stack(cids.map(bindCid(cidMap, _)))
   }
