@@ -16,16 +16,18 @@ object TreeUtils {
   final case class Selector(i: Int)
 
   def traverseTree(tree: TransactionTree)(f: (List[Selector], TreeEvent.Kind) => Unit): Unit = {
-    def traverseEv(ev: TreeEvent.Kind, f: (List[Selector], TreeEvent.Kind) => Unit): Unit = ev match {
-      case Kind.Empty =>
-      case created @ Kind.Created(_) =>
-        f(List(), created)
-      case exercised @ Kind.Exercised(value) =>
-        f(List(), exercised)
-        value.childEventIds.map(x => tree.eventsById(x).kind).zipWithIndex.foreach { case (ev, i) =>
-          traverseEv(ev, { case (path, ev) => f(Selector(i) :: path, ev) })
-        }
-    }
+    def traverseEv(ev: TreeEvent.Kind, f: (List[Selector], TreeEvent.Kind) => Unit): Unit =
+      ev match {
+        case Kind.Empty =>
+        case created @ Kind.Created(_) =>
+          f(List(), created)
+        case exercised @ Kind.Exercised(value) =>
+          f(List(), exercised)
+          value.childEventIds.map(x => tree.eventsById(x).kind).zipWithIndex.foreach {
+            case (ev, i) =>
+              traverseEv(ev, { case (path, ev) => f(Selector(i) :: path, ev) })
+          }
+      }
     tree.rootEventIds.map(tree.eventsById(_)).zipWithIndex.foreach { case (ev, i) =>
       traverseEv(ev.kind, { case (path, ev) => f(Selector(i) :: path, ev) })
     }

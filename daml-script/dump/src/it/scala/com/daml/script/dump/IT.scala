@@ -7,19 +7,27 @@ import java.nio.file.Files
 import java.util.UUID
 
 import com.daml.bazeltools.BazelRunfiles
-import com.daml.lf.data.Ref.Identifier
-import com.daml.lf.engine.script.Runner
+import com.daml.lf.language.Ast.Package
+import com.daml.lf.data.Ref
+import com.daml.lf.data.Ref.PackageId
+import com.daml.lf.engine.script.{GrpcLedgerClient, Participants, Runner, ScriptTimeMode}
 import com.daml.ledger.api.domain
+import com.daml.ledger.api.refinements.ApiTypes.ApplicationId
 import com.daml.ledger.api.testing.utils.{AkkaBeforeAndAfterAll, SuiteResourceManagementAroundEach}
 import com.daml.ledger.api.v1.command_service.SubmitAndWaitRequest
 import com.daml.ledger.api.v1.commands._
-import com.daml.ledger.api.v1.value._
+import com.daml.ledger.api.v1.{value => api}
 import com.daml.ledger.client.LedgerClient
-import com.daml.ledger.client.configuration.{CommandClientConfiguration, LedgerClientConfiguration, LedgerIdRequirement}
-import com.daml.lf.archive.{DarReader, Decode}
+import com.daml.ledger.client.configuration.{
+  CommandClientConfiguration,
+  LedgerClientConfiguration,
+  LedgerIdRequirement,
+}
+import com.daml.lf.archive.{Dar, DarReader, Decode}
 import com.daml.platform.sandbox.services.TestCommands
 import com.daml.platform.sandboxnext.SandboxNextFixture
 import scalaz.syntax.tag._
+import scalaz.syntax.traverse._
 
 import scala.sys.process._
 import org.scalatest._
@@ -45,6 +53,8 @@ final class IT
   private val tmpDir = Files.createTempDirectory("script_dump")
   private val damlc = BazelRunfiles.requiredResource("compiler/damlc/damlc")
   private val damlScriptLib = BazelRunfiles.requiredResource("daml-script/daml/daml-script.dar")
+  private def iouId(s: String) =
+    api.Identifier(packageId, moduleName = "Iou", s)
 
   "Generated dump for IOU transfer compiles" in {
     for {
@@ -62,21 +72,15 @@ final class IT
               commands = Seq(
                 Command().withCreate(
                   CreateCommand(
-                    templateId = Some(
-                      Identifier(
-                        packageId = packageId,
-                        moduleName = "Iou",
-                        entityName = "Iou",
-                      )
-                    ),
+                    templateId = Some(iouId("Iou")),
                     createArguments = Some(
-                      Record(
+                      api.Record(
                         fields = Seq(
-                          RecordField("issuer", Some(Value().withParty(p1))),
-                          RecordField("owner", Some(Value().withParty(p1))),
-                          RecordField("currency", Some(Value().withText("USD"))),
-                          RecordField("amount", Some(Value().withNumeric("100"))),
-                          RecordField("observers", Some(Value().withList(List()))),
+                          api.RecordField("issuer", Some(api.Value().withParty(p1))),
+                          api.RecordField("owner", Some(api.Value().withParty(p1))),
+                          api.RecordField("currency", Some(api.Value().withText("USD"))),
+                          api.RecordField("amount", Some(api.Value().withNumeric("100"))),
+                          api.RecordField("observers", Some(api.Value().withList(api.List()))),
                         )
                       )
                     ),
@@ -99,19 +103,17 @@ final class IT
               commands = Seq(
                 Command().withExercise(
                   ExerciseCommand(
-                    templateId = Some(
-                      Identifier(
-                        packageId = packageId,
-                        moduleName = "Iou",
-                        entityName = "Iou",
-                      )
-                    ),
+                    templateId = Some(iouId("Iou")),
                     choice = "Iou_Split",
                     contractId = cid0,
                     choiceArgument = Some(
-                      Value().withRecord(
-                        Record(fields = Seq(RecordField(value = Some(Value().withNumeric("50")))))
-                      )
+                      api
+                        .Value()
+                        .withRecord(
+                          api.Record(fields =
+                            Seq(api.RecordField(value = Some(api.Value().withNumeric("50"))))
+                          )
+                        )
                     ),
                   )
                 )
@@ -133,19 +135,17 @@ final class IT
               commands = Seq(
                 Command().withExercise(
                   ExerciseCommand(
-                    templateId = Some(
-                      Identifier(
-                        packageId = packageId,
-                        moduleName = "Iou",
-                        entityName = "Iou",
-                      )
-                    ),
+                    templateId = Some(iouId("Iou")),
                     choice = "Iou_AddObserver",
                     contractId = cid2,
                     choiceArgument = Some(
-                      Value().withRecord(
-                        Record(fields = Seq(RecordField(value = Some(Value().withParty(p2)))))
-                      )
+                      api
+                        .Value()
+                        .withRecord(
+                          api.Record(fields =
+                            Seq(api.RecordField(value = Some(api.Value().withParty(p2))))
+                          )
+                        )
                     ),
                   )
                 )
@@ -166,19 +166,17 @@ final class IT
               commands = Seq(
                 Command().withExercise(
                   ExerciseCommand(
-                    templateId = Some(
-                      Identifier(
-                        packageId = packageId,
-                        moduleName = "Iou",
-                        entityName = "Iou",
-                      )
-                    ),
+                    templateId = Some(iouId("Iou")),
                     choice = "Iou_Transfer",
                     contractId = cid3,
                     choiceArgument = Some(
-                      Value().withRecord(
-                        Record(fields = Seq(RecordField(value = Some(Value().withParty(p2)))))
-                      )
+                      api
+                        .Value()
+                        .withRecord(
+                          api.Record(fields =
+                            Seq(api.RecordField(value = Some(api.Value().withParty(p2))))
+                          )
+                        )
                     ),
                   )
                 )
@@ -199,16 +197,10 @@ final class IT
               commands = Seq(
                 Command().withExercise(
                   ExerciseCommand(
-                    templateId = Some(
-                      Identifier(
-                        packageId = packageId,
-                        moduleName = "Iou",
-                        entityName = "IouTransfer",
-                      )
-                    ),
+                    templateId = Some(iouId("IouTransfer")),
                     choice = "IouTransfer_Accept",
                     contractId = cid4,
-                    choiceArgument = Some(Value().withRecord(Record())),
+                    choiceArgument = Some(api.Value().withRecord(api.Record())),
                   )
                 )
               ),
@@ -227,13 +219,30 @@ final class IT
         )
       )
 
-      _ = Seq[String](damlc.toString, "build", "--project-root", tmpDir.toString, "-o", tmpDir.resolve("dump.dar").toString).! shouldBe 0
+      _ = Seq[String](
+        damlc.toString,
+        "build",
+        "--project-root",
+        tmpDir.toString,
+        "-o",
+        tmpDir.resolve("dump.dar").toString,
+      ).! shouldBe 0
       // Now run the DAML Script again
-      dar = DarReader().readArchiveFromFile(tmpDir.resolve("dump.dar").toFile)
-        .map
-        { case (pkgId, pkgArchive) => Decode.readArchivePayload(pkgId, pkgArchive)
-        }
-      _ <- Runner.run(dar, Identifier())
+      encodedDar = DarReader().readArchiveFromFile(tmpDir.resolve("dump.dar").toFile).get
+      dar: Dar[(PackageId, Package)] = encodedDar
+        .map { case (pkgId, pkgArchive) => Decode.readArchivePayload(pkgId, pkgArchive) }
+      _ <- Runner.run(
+        dar,
+        Ref.Identifier(dar.main._1, Ref.QualifiedName.assertFromString("Dump:dump")),
+        inputValue = None,
+        timeMode = ScriptTimeMode.WallClock,
+        initialClients = Participants(
+          default_participant = Some(new GrpcLedgerClient(client, ApplicationId("script"))),
+          participants = Map.empty,
+          party_participants = Map.empty,
+        ),
+      )
+      // TODO Validate the script result.
     } yield succeed
   }
 }

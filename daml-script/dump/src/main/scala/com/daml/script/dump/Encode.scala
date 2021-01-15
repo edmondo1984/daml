@@ -171,7 +171,6 @@ private[dump] object Encode {
 
   private def encodeSelector(selector: Selector): Doc = Doc.str(selector.i)
 
-
   private def encodeImport(moduleName: String) =
     Doc.text("import qualified ") + Doc.text(moduleName)
 

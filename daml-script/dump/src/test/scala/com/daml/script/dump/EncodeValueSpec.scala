@@ -49,8 +49,8 @@ class EncodeValueSpec extends AnyFreeSpec with Matchers {
             ),
             RecordField(
               "c",
-              Some(Value().withRecord(Record(Some(id3))))
-            )
+              Some(Value().withRecord(Record(Some(id3)))),
+            ),
           ),
         )
       )
