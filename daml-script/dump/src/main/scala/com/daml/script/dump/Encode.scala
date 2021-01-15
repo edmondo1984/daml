@@ -100,8 +100,12 @@ private[dump] object Encode {
       cidMap: Map[String, String],
       r: Record,
   ): Doc = {
-    (qualifyId(r.getRecordId) + Doc.text(" with") /
-      Doc.stack(r.fields.map(f => encodeField(partyMap, cidMap, f)))).nested(2)
+    if (r.fields.isEmpty) {
+      qualifyId(r.getRecordId)
+    } else {
+      (qualifyId(r.getRecordId) + Doc.text(" with") /
+        Doc.stack(r.fields.map(f => encodeField(partyMap, cidMap, f)))).nested(2)
+    }
   }
 
   private def encodeField(

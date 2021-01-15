@@ -33,6 +33,7 @@ class EncodeValueSpec extends AnyFreeSpec with Matchers {
     "record" in {
       val id1 = Identifier("pkg-id", "M", "R1")
       val id2 = Identifier("pkg-id", "M", "R2")
+      val id3 = Identifier("pkg-id", "M", "R3")
       val r = Value.Sum.Record(
         Record(
           Some(id1),
@@ -46,6 +47,10 @@ class EncodeValueSpec extends AnyFreeSpec with Matchers {
                 )
               ),
             ),
+            RecordField(
+              "c",
+              Some(Value().withRecord(Record(Some(id3))))
+            )
           ),
         )
       )
@@ -53,7 +58,8 @@ class EncodeValueSpec extends AnyFreeSpec with Matchers {
         """M.R1 with
         |  a = 1
         |  b = M.R2 with
-        |    c = 42""".stripMargin
+        |    c = 42
+        |  c = M.R3""".stripMargin
     }
   }
 }
