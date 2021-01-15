@@ -7,20 +7,20 @@ import java.nio.file.Files
 import java.util.UUID
 
 import com.daml.bazeltools.BazelRunfiles
+import com.daml.lf.data.Ref.Identifier
+import com.daml.lf.engine.script.Runner
 import com.daml.ledger.api.domain
 import com.daml.ledger.api.testing.utils.{AkkaBeforeAndAfterAll, SuiteResourceManagementAroundEach}
 import com.daml.ledger.api.v1.command_service.SubmitAndWaitRequest
 import com.daml.ledger.api.v1.commands._
 import com.daml.ledger.api.v1.value._
 import com.daml.ledger.client.LedgerClient
-import com.daml.ledger.client.configuration.{
-  CommandClientConfiguration,
-  LedgerClientConfiguration,
-  LedgerIdRequirement,
-}
+import com.daml.ledger.client.configuration.{CommandClientConfiguration, LedgerClientConfiguration, LedgerIdRequirement}
+import com.daml.lf.archive.{DarReader, Decode}
 import com.daml.platform.sandbox.services.TestCommands
 import com.daml.platform.sandboxnext.SandboxNextFixture
 import scalaz.syntax.tag._
+
 import scala.sys.process._
 import org.scalatest._
 import org.scalatest.freespec.AsyncFreeSpec
@@ -227,7 +227,13 @@ final class IT
         )
       )
 
-      _ = Seq[String](damlc.toString, "build", "--project-root", tmpDir.toString).! shouldBe 0
+      _ = Seq[String](damlc.toString, "build", "--project-root", tmpDir.toString, "-o", tmpDir.resolve("dump.dar").toString).! shouldBe 0
+      // Now run the DAML Script again
+      dar = DarReader().readArchiveFromFile(tmpDir.resolve("dump.dar").toFile)
+        .map
+        { case (pkgId, pkgArchive) => Decode.readArchivePayload(pkgId, pkgArchive)
+        }
+      _ <- Runner.run(dar, Identifier())
     } yield succeed
   }
 }

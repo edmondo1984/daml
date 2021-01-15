@@ -10,8 +10,6 @@ module Daml.Script
   , submitMultiMustFail
   , submitTree
   , submitTreeMulti
-  , selectRoot
-  , selectChild
   , createdCid
   , query
   , queryContractId
@@ -41,7 +39,7 @@ module Daml.Script
 
 import DA.Functor
 import DA.NonEmpty (NonEmpty(..))
-import DA.List
+import DA.List.Total
 import DA.Optional
 import DA.Stack
 import DA.Time
@@ -465,16 +463,31 @@ data TransactionTree = TransactionTree
     rootEvents: [TreeEvent]
   deriving Show
 
-selectRoot : Int -> TransactionTree -> TreeEvent
-selectRoot i (TransactionTree evs) = evs !! i
+createdCid : Template t => [Int] -> TransactionTree -> ContractId t
+createdCid [] _ = error "List of selectors passed to createdCid was empty"
+createdCid (i :: ss) (TransactionTree evs) =
+  case evs !! i of
+    None ->
+      error $ "Transaction tree has only " <> show (length evs) <> " root events but selected " <> show i
+    Some t -> createdCidGo ss t
 
-selectChild : Int -> TreeEvent -> TreeEvent
-selectChild i (ExercisedEvent (Exercised evs)) = evs !! i
-selectChild _ (CreatedEvent _) = error "Called selectChild on CreatedEvent"
-
-createdCid : Template t => TreeEvent -> ContractId t
-createdCid (ExercisedEvent _) =  error "Called createdCid on ExercisedEvent"
-createdCid (CreatedEvent (Created cid)) = fromSome $ fromAnyContractId cid
+createdCidGo : Template t => [Int] -> TreeEvent -> ContractId t
+createdCidGo [] (CreatedEvent (Created cid)) =
+  case fromAnyContractId cid of
+    None -> error "createdCid selected a create node of the wrong template type"
+    Some cid -> cid
+createdCidGo [] (ExercisedEvent _) =
+  error "createdCid selected an exercise event"
+createdCidGo ss@(_ :: _) (CreatedEvent _) =
+  error $ "createdCid reached created event before the following selectors have been applied: " <> show ss
+createdCidGo (i :: ss) (ExercisedEvent (Exercised evs)) =
+  case evs !! i of
+    None ->
+      error $
+        "Exercised event has only " <>
+        show (length evs) <> " child events but selected " <>
+        show i
+    Some e -> createdCidGo ss e
 
 data TreeEvent
   = CreatedEvent Created

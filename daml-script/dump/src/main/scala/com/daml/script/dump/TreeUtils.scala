@@ -13,23 +13,21 @@ import scalaz.std.set._
 import scalaz.syntax.foldable._
 
 object TreeUtils {
-  sealed trait Crumb
-  final case class SelectRoot(i: Int) extends Crumb
-  final case class SelectChild(i: Int) extends Crumb
+  final case class Selector(i: Int)
 
-  def traverseTree(tree: TransactionTree)(f: (List[Crumb], TreeEvent.Kind) => Unit): Unit = {
-    def traverseEv(ev: TreeEvent.Kind, f: (List[Crumb], TreeEvent.Kind) => Unit): Unit = ev match {
+  def traverseTree(tree: TransactionTree)(f: (List[Selector], TreeEvent.Kind) => Unit): Unit = {
+    def traverseEv(ev: TreeEvent.Kind, f: (List[Selector], TreeEvent.Kind) => Unit): Unit = ev match {
       case Kind.Empty =>
       case created @ Kind.Created(_) =>
         f(List(), created)
       case exercised @ Kind.Exercised(value) =>
         f(List(), exercised)
         value.childEventIds.map(x => tree.eventsById(x).kind).zipWithIndex.foreach { case (ev, i) =>
-          traverseEv(ev, { case (path, ev) => f(SelectChild(i) :: path, ev) })
+          traverseEv(ev, { case (path, ev) => f(Selector(i) :: path, ev) })
         }
     }
     tree.rootEventIds.map(tree.eventsById(_)).zipWithIndex.foreach { case (ev, i) =>
-      traverseEv(ev.kind, { case (path, ev) => f(SelectRoot(i) :: path, ev) })
+      traverseEv(ev.kind, { case (path, ev) => f(Selector(i) :: path, ev) })
     }
   }
 
@@ -79,16 +77,16 @@ object TreeUtils {
       }
   }
 
-  case class CreatedContract(cid: String, tplId: Identifier, path: List[Crumb])
+  case class CreatedContract(cid: String, tplId: Identifier, path: List[Selector])
 
   def treeCids(tree: TransactionTree): Seq[CreatedContract] = {
     var cids: Seq[CreatedContract] = Seq()
-    traverseTree(tree) { case (crumbs, kind) =>
+    traverseTree(tree) { case (selectors, kind) =>
       kind match {
         case Kind.Empty =>
         case Kind.Exercised(_) =>
         case Kind.Created(value) =>
-          cids ++= Seq(CreatedContract(value.contractId, value.getTemplateId, crumbs))
+          cids ++= Seq(CreatedContract(value.contractId, value.getTemplateId, selectors))
       }
     }
     cids

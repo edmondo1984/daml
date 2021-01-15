@@ -148,10 +148,10 @@ private[dump] object Encode {
 
   private def bindCid(cidMap: Map[String, String], c: CreatedContract): Doc = {
     Doc.text("let ") + encodeCid(cidMap, c.cid) + Doc.text(" = createdCid @") +
-      qualifyId(c.tplId) + Doc.text(" $ ") + Doc.intercalate(
-        Doc.text(" $ "),
-        c.path.reverse.map(encodeCrumb(_)),
-      ) + Doc.text(" tree")
+      qualifyId(c.tplId) + Doc.text(" [") + Doc.intercalate(
+        Doc.text(", "),
+        c.path.map(encodeSelector(_)),
+      ) + Doc.text("] tree")
   }
 
   private def encodeTree(
@@ -169,10 +169,8 @@ private[dump] object Encode {
       Doc.stack(cids.map(bindCid(cidMap, _)))
   }
 
-  private def encodeCrumb(crumb: Crumb): Doc = crumb match {
-    case SelectRoot(i) => "selectRoot " +: Doc.str(i)
-    case SelectChild(i) => "selectChild " +: Doc.str(i)
-  }
+  private def encodeSelector(selector: Selector): Doc = Doc.str(selector.i)
+
 
   private def encodeImport(moduleName: String) =
     Doc.text("import qualified ") + Doc.text(moduleName)
