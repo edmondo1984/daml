@@ -136,7 +136,7 @@ final class IT
                 Command().withExercise(
                   ExerciseCommand(
                     templateId = Some(iouId("Iou")),
-                    choice = "Iou_AddObserver",
+                    choice = "Iou_Transfer",
                     contractId = cid2,
                     choiceArgument = Some(
                       api
@@ -155,37 +155,6 @@ final class IT
         )
       )
       cid3 = t2.getTransaction.events(1).getCreated.contractId
-      t3 <- client.commandServiceClient.submitAndWaitForTransaction(
-        SubmitAndWaitRequest(
-          Some(
-            Commands(
-              ledgerId = client.ledgerId.unwrap,
-              applicationId = appId.unwrap,
-              commandId = UUID.randomUUID().toString(),
-              party = p1,
-              commands = Seq(
-                Command().withExercise(
-                  ExerciseCommand(
-                    templateId = Some(iouId("Iou")),
-                    choice = "Iou_Transfer",
-                    contractId = cid3,
-                    choiceArgument = Some(
-                      api
-                        .Value()
-                        .withRecord(
-                          api.Record(fields =
-                            Seq(api.RecordField(value = Some(api.Value().withParty(p2))))
-                          )
-                        )
-                    ),
-                  )
-                )
-              ),
-            )
-          )
-        )
-      )
-      cid4 = t3.getTransaction.events(1).getCreated.contractId
       _ <- client.commandServiceClient.submitAndWaitForTransaction(
         SubmitAndWaitRequest(
           Some(
@@ -199,7 +168,7 @@ final class IT
                   ExerciseCommand(
                     templateId = Some(iouId("IouTransfer")),
                     choice = "IouTransfer_Accept",
-                    contractId = cid4,
+                    contractId = cid3,
                     choiceArgument = Some(api.Value().withRecord(api.Record())),
                   )
                 )
@@ -228,15 +197,15 @@ final class IT
         tmpDir.resolve("dump.dar").toString,
       ).! shouldBe 0
       // Now run the DAML Script again
-      p2 <- client.partyManagementClient.allocateParty(None, None).map(_.party)
       p3 <- client.partyManagementClient.allocateParty(None, None).map(_.party)
+      p4 <- client.partyManagementClient.allocateParty(None, None).map(_.party)
       encodedDar = DarReader().readArchiveFromFile(tmpDir.resolve("dump.dar").toFile).get
       dar: Dar[(PackageId, Package)] = encodedDar
         .map { case (pkgId, pkgArchive) => Decode.readArchivePayload(pkgId, pkgArchive) }
       _ <- Runner.run(
         dar,
         Ref.Identifier(dar.main._1, Ref.QualifiedName.assertFromString("Dump:dump")),
-        inputValue = Some(JsArray(JsString(p2), JsString(p3))),
+        inputValue = Some(JsArray(JsString(p3), JsString(p4))),
         timeMode = ScriptTimeMode.WallClock,
         initialClients = Participants(
           default_participant = Some(new GrpcLedgerClient(client, ApplicationId("script"))),
@@ -247,13 +216,19 @@ final class IT
       transactions <- client.transactionClient.getTransactions(
         LedgerOffset().withBoundary(LedgerOffset.LedgerBoundary.LEDGER_BEGIN),
         Some(LedgerOffset().withBoundary(LedgerOffset.LedgerBoundary.LEDGER_END)),
-        transactionFilter(p2)).runWith(Sink.seq)
-      _ = transactions should have length 5
+        transactionFilter(p3)).runWith(Sink.seq)
+      _ = transactions should have length 4
       transactions <- client.transactionClient.getTransactions(
         LedgerOffset().withBoundary(LedgerOffset.LedgerBoundary.LEDGER_BEGIN),
         Some(LedgerOffset().withBoundary(LedgerOffset.LedgerBoundary.LEDGER_END)),
-        transactionFilter(p3)).runWith(Sink.seq)
-      _ = transactions should have length 3
+        transactionFilter(p4)).runWith(Sink.seq)
+      _ = transactions should have length 2
+      acs <- client.activeContractSetClient.getActiveContracts(transactionFilter(p3)).runWith(Sink.seq)
+      _ = acs.flatMap(_.activeContracts) should have size 2
+      _ = println(acs)
+      acs <- client.activeContractSetClient.getActiveContracts(transactionFilter(p4)).runWith(Sink.seq)
+      _ = acs.flatMap(_.activeContracts) should have size 1
+      _ = println(acs)
       // TODO Validate the script result.
     } yield succeed
   }
