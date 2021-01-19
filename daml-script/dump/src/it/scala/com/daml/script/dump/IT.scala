@@ -6,6 +6,7 @@ package com.daml.script.dump
 import java.nio.file.Files
 import java.util.UUID
 
+import akka.stream.scaladsl.Sink
 import com.daml.bazeltools.BazelRunfiles
 import com.daml.lf.language.Ast.Package
 import com.daml.lf.data.Ref
@@ -16,13 +17,11 @@ import com.daml.ledger.api.refinements.ApiTypes.ApplicationId
 import com.daml.ledger.api.testing.utils.{AkkaBeforeAndAfterAll, SuiteResourceManagementAroundEach}
 import com.daml.ledger.api.v1.command_service.SubmitAndWaitRequest
 import com.daml.ledger.api.v1.commands._
+import com.daml.ledger.api.v1.ledger_offset.LedgerOffset
+import com.daml.ledger.api.v1.transaction_filter.{Filters, TransactionFilter}
 import com.daml.ledger.api.v1.{value => api}
 import com.daml.ledger.client.LedgerClient
-import com.daml.ledger.client.configuration.{
-  CommandClientConfiguration,
-  LedgerClientConfiguration,
-  LedgerIdRequirement,
-}
+import com.daml.ledger.client.configuration.{CommandClientConfiguration, LedgerClientConfiguration, LedgerIdRequirement}
 import com.daml.lf.archive.{Dar, DarReader, Decode}
 import com.daml.platform.sandbox.services.TestCommands
 import com.daml.platform.sandboxnext.SandboxNextFixture
@@ -245,7 +244,19 @@ final class IT
           party_participants = Map.empty,
         ),
       )
+      transactions <- client.transactionClient.getTransactions(
+        LedgerOffset().withBoundary(LedgerOffset.LedgerBoundary.LEDGER_BEGIN),
+        Some(LedgerOffset().withBoundary(LedgerOffset.LedgerBoundary.LEDGER_END)),
+        transactionFilter(p2)).runWith(Sink.seq)
+      _ = transactions should have length 5
+      transactions <- client.transactionClient.getTransactions(
+        LedgerOffset().withBoundary(LedgerOffset.LedgerBoundary.LEDGER_BEGIN),
+        Some(LedgerOffset().withBoundary(LedgerOffset.LedgerBoundary.LEDGER_END)),
+        transactionFilter(p3)).runWith(Sink.seq)
+      _ = transactions should have length 3
       // TODO Validate the script result.
     } yield succeed
   }
+
+  private def transactionFilter(p: Ref.Party) = TransactionFilter(filtersByParty = Seq(p -> Filters()).toMap)
 }
