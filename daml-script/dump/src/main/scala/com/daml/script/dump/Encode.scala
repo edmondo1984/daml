@@ -27,17 +27,33 @@ private[dump] object Encode {
     Doc.text("module Dump where") /
       Doc.text("import Daml.Script") /
       Doc.stack(moduleRefs.map(encodeImport(_))) /
-      (Doc.text("dump = do") /
-        Doc.stack(
-          parties.map(p =>
-            encodeParty(partyMap, p) + Doc.text(" <- allocateParty \"") + Doc.text(p) + Doc.text(
-              "\""
-            )
-          )
-        ) /
+      Doc.hardLine +
+      encodePartyType(partyMap) /
+      Doc.hardLine +
+      encodeAllocateParties(partyMap) /
+      Doc.hardLine +
+      Doc.text("testDump : Script ()") /
+      (Doc.text("testDump = do") /
+        Doc.text("parties <- allocateParties") /
+        Doc.text("dump parties")).hang(2) /
+      Doc.hardLine +
+      Doc.text("dump : Parties -> Script ()") /
+      (Doc.text("dump Parties{..} = do") /
         Doc.stack(trees.map(t => encodeTree(partyMap, cidMap, t))) /
         Doc.text("pure ()")).hang(2)
   }
+
+  private def encodeAllocateParties(partyMap: Map[String, String]): Doc =
+    Doc.text("allocateParties : Script Parties") /
+      (Doc.text("allocateParties = do") /
+        Doc.stack(partyMap.map { case (k, v) =>
+          Doc.text(v) + Doc.text(" <- allocateParty \"") + Doc.text(k) + Doc.text("\"")
+        }) /
+        Doc.text("pure Parties{..}")).hang(2)
+
+  private def encodePartyType(partyMap: Map[String, String]): Doc =
+    (Doc.text("data Parties = Parties with") /
+      Doc.stack(partyMap.values.map(p => Doc.text(p) + Doc.text(" : Party")))).hang(2)
 
   private def encodeLocalDate(d: LocalDate): Doc = {
     val formatter = DateTimeFormatter.ofPattern("uuuu MMM d")

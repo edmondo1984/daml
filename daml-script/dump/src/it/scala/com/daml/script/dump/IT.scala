@@ -28,6 +28,7 @@ import com.daml.platform.sandbox.services.TestCommands
 import com.daml.platform.sandboxnext.SandboxNextFixture
 import scalaz.syntax.tag._
 import scalaz.syntax.traverse._
+import spray.json._
 
 import scala.sys.process._
 import org.scalatest._
@@ -228,13 +229,15 @@ final class IT
         tmpDir.resolve("dump.dar").toString,
       ).! shouldBe 0
       // Now run the DAML Script again
+      p2 <- client.partyManagementClient.allocateParty(None, None).map(_.party)
+      p3 <- client.partyManagementClient.allocateParty(None, None).map(_.party)
       encodedDar = DarReader().readArchiveFromFile(tmpDir.resolve("dump.dar").toFile).get
       dar: Dar[(PackageId, Package)] = encodedDar
         .map { case (pkgId, pkgArchive) => Decode.readArchivePayload(pkgId, pkgArchive) }
       _ <- Runner.run(
         dar,
         Ref.Identifier(dar.main._1, Ref.QualifiedName.assertFromString("Dump:dump")),
-        inputValue = None,
+        inputValue = Some(JsArray(JsString(p2), JsString(p3))),
         timeMode = ScriptTimeMode.WallClock,
         initialClients = Participants(
           default_participant = Some(new GrpcLedgerClient(client, ApplicationId("script"))),
