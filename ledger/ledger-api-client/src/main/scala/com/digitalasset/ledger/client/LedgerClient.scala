@@ -48,7 +48,9 @@ final class LedgerClient private (
 
   val commandClient: CommandClient =
     new CommandClient(
-      LedgerClient.stub(CommandSubmissionServiceGrpc.stub(channel), config.token),
+      LedgerClient
+        .stub(CommandSubmissionServiceGrpc.stub(channel), config.token)
+        .withInterceptors(config.commandClient.interceptors: _*),
       LedgerClient.stub(CommandCompletionServiceGrpc.stub(channel), config.token),
       ledgerId,
       config.applicationId,
@@ -56,7 +58,12 @@ final class LedgerClient private (
     )
 
   val commandServiceClient: SynchronousCommandClient =
-    new SynchronousCommandClient(LedgerClient.stub(CommandServiceGrpc.stub(channel), config.token))
+    new SynchronousCommandClient(
+      LedgerClient.stub(
+        CommandServiceGrpc.stub(channel).withInterceptors(config.commandClient.interceptors: _*),
+        config.token,
+      )
+    )
 
   val packageClient: PackageClient =
     new PackageClient(ledgerId, LedgerClient.stub(PackageServiceGrpc.stub(channel), config.token))

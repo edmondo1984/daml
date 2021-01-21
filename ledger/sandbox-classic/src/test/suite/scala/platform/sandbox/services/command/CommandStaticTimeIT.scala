@@ -62,6 +62,7 @@ final class CommandStaticTimeIT
             maxCommandsInFlight = 1,
             maxParallelSubmissions = 1,
             defaultDeduplicationTime = java.time.Duration.ofSeconds(30),
+            Seq.empty,
           ),
         )
       )(DirectExecutionContext)

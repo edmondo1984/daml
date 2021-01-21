@@ -5,6 +5,8 @@ package com.daml.ledger.client.configuration
 
 import java.time.Duration
 
+import io.grpc.ClientInterceptor
+
 /** @param maxCommandsInFlight The maximum number of unconfirmed commands the client may track.
   *                            The client will backpressure when this number is reached.
   * @param maxParallelSubmissions The maximum number of parallel command submissions at a given time.
@@ -12,13 +14,21 @@ import java.time.Duration
   * @param defaultDeduplicationTime The deduplication time to use for commands that do not have
   *                                 a deduplication time set. The deduplication time is also used
   *                                 as the time after which commands time out in the command client.
+  * @param interceptors A collection of [[ClientInterceptor]]s to be applied to all requests going through
   */
 final case class CommandClientConfiguration(
     maxCommandsInFlight: Int,
     maxParallelSubmissions: Int,
     defaultDeduplicationTime: Duration,
+    interceptors: Seq[ClientInterceptor],
 )
 
 object CommandClientConfiguration {
-  def default = CommandClientConfiguration(1, 1, Duration.ofSeconds(30L))
+  val default: CommandClientConfiguration =
+    CommandClientConfiguration(
+      maxCommandsInFlight = 1,
+      maxParallelSubmissions = 1,
+      defaultDeduplicationTime = Duration.ofSeconds(30L),
+      interceptors = Seq.empty,
+    )
 }

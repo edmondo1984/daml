@@ -63,6 +63,7 @@ final class CommandClientIT
       maxCommandsInFlight = 1,
       maxParallelSubmissions = 1,
       defaultDeduplicationTime = Duration.ofSeconds(30),
+      interceptors = Seq.empty,
     )
 
   private val testLedgerId = domain.LedgerId("ledgerId")

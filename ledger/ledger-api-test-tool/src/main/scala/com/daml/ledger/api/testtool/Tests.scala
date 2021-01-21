@@ -9,16 +9,17 @@ import com.daml.ledger.api.testtool.infrastructure.{BenchmarkReporter, Envelope,
 import com.daml.ledger.api.testtool.tests._
 
 import scala.collection.SortedSet
+import scala.concurrent.duration.Duration
 
 object Tests {
 
-  def default(config: Config): Vector[LedgerTestSuite] =
+  def default(ledgerClockGranularity: Duration): Vector[LedgerTestSuite] =
     Vector(
       new ActiveContractsServiceIT,
       new ClosedWorldIT,
       new CommandServiceIT,
       new CommandSubmissionCompletionIT,
-      new CommandDeduplicationIT(config.ledgerClockGranularity),
+      new CommandDeduplicationIT(ledgerClockGranularity),
       new ConfigManagementServiceIT,
       new ContractKeysIT,
       new DivulgenceIT,
