@@ -36,11 +36,11 @@ func x = runE $ do
 myThrow : () -> a
 myThrow () = error "myThrow" -- throw is just an error
 
-myCatch : (() -> a) -> a -> a
-myCatch handler x = x -- No catching yet!
+myCatch : (() -> a) -> (() -> a) -> a
+myCatch handler body = body () -- No catching yet!
 
 func : Int -> Int
-func x = 1000 + (myCatch (\() -> 100) (10 + (if (x + 40 == 42) then myThrow() else x)))
+func x = 1000 + (myCatch (\() -> 100) (\() -> 10 + (if (x + 40 == 42) then myThrow() else x)))
 
 
 
