@@ -1383,6 +1383,20 @@ private[lf] object SBuiltin {
       throw DamlEUserError("Raise:" + args.get(0).asInstanceOf[SText].value)
   }
 
+  /** $catch :: (Unit -> a) -> (Unit -> a) -> a */
+  final case object SBCatch extends SBuiltin(2) {
+    override private[speedy] final def execute(
+        args: util.ArrayList[SValue],
+        machine: Machine,
+    ): Unit = {
+      val handler: SValue = args.get(0)
+      val _ = handler // handler ignored
+      val body: SValue = args.get(1)
+      val unit: SExprAtomic = SEValue(SValue.SValue.Unit)
+      machine.enterApplication(body, Array(unit)) // TODO: this never catches, it just run the body
+    }
+  }
+
   /** $to_any
     *    :: t
     *    -> Any (where t = ty)

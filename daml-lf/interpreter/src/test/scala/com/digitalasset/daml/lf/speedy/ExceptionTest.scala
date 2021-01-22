@@ -27,8 +27,7 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
 
          val myCatch : forall (a: *). (Unit -> a) -> (Unit -> a) -> a =
            /\ (a: *). \ (handler: Unit -> a) (body: Unit -> a) ->
-             body (); // No catching yet!
-             //handler (); // always catching!
+             CATCH @a handler body;
 
          val func : (Int64 -> Int64) = \ (x: Int64) ->
            (ADD_INT64 1000

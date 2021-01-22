@@ -511,6 +511,7 @@ private[lf] final class Compiler(
 
           // Exceptions
           case BRaise => SBRaise
+          case BCatch => SBCatch
 
           // Comparison
           case BEqualContractId => SBEqual

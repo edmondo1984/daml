@@ -428,6 +428,7 @@ object Ast {
 
   // Exceptions
   final case object BRaise extends BuiltinFunction(1) // : ∀a. Text → a
+  final case object BCatch extends BuiltinFunction(2) // : ∀a. (Unit → a) → a → a
 
   // Comparisons
   final case object BLessNumeric extends BuiltinFunction(2) // :  ∀s. Numeric s → Numeric s → Bool
