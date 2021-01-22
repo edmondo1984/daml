@@ -1,0 +1,52 @@
+-- Copyright (c) 2020, Digital Asset (Switzerland) GmbH and/or its affiliates.
+-- All rights reserved.
+
+module Exceptions1 where
+
+-- First tests for DAML exceptions...
+
+-- Model exceptions with own exception monad.. (iso to an option type)
+{-
+data MyE a = Yes a | No deriving (Functor)
+instance Applicative MyE where pure = Yes; (<*>) = ap
+instance Action MyE where (>>=) = bindE
+
+bindE : MyE a -> (a -> MyE b) -> MyE b
+bindE e f = case e of Yes a -> f a; No -> No
+
+runE : MyE a -> a
+runE = \case Yes x -> x; No -> error "runE: unhandled exception"
+
+myThrow : () -> MyE a
+myThrow () = No
+
+myCatch : (() -> MyE a) -> MyE a -> MyE a
+myCatch handler = \case Yes a -> Yes a; No -> handler ()
+
+func : Int -> Int
+func x = runE $ do
+  (1000 +) <$> myCatch (\() -> pure 100) (do
+    (10+) <$> if (x + 40 == 42) then myThrow() else pure x)
+-}
+
+
+-- Modify example to work with native exceptions (which are not yet implemeted of course)
+-- `func` no longer needs to be defined in a monad.
+
+myThrow : () -> a
+myThrow () = error "myThrow" -- throw is just an error
+
+myCatch : (() -> a) -> a -> a
+myCatch handler x = x -- No catching yet!
+
+func : Int -> Int
+func x = 1000 + (myCatch (\() -> 100) (10 + (if (x + 40 == 42) then myThrow() else x)))
+
+
+
+test : Scenario ()
+test = scenario do
+  assert (func 1 == 1011)
+  --assert (func 2 == 1100) -- this works with the exception monad
+  assert (func 3 == 1013)
+  pure ()
