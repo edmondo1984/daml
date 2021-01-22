@@ -23,7 +23,7 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
        module M {
          val myThrow : forall (a: *). (Unit -> a) =
            /\ (a: *). \(u : Unit) ->
-             ERROR @a "myThrow";
+             RAISE @a "myThrow";
 
          val myCatch : forall (a: *). (Unit -> a) -> a -> a =
            /\ (a: *). \ (handler: Unit -> a) (x: a) ->
@@ -46,7 +46,7 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
   "func(2) -- exception thrown!!" in {
     val exp = e"M:func 2"
     //val expected = Right(SValue.SInt64(1100)) // TODO: when we implement exceptions
-    val expected = Left(DamlEUserError("myThrow"))
+    val expected = Left(DamlEUserError("Raise:myThrow"))
     runExpr(exp) shouldBe expected
   }
   "func(3) -- no exception" in {

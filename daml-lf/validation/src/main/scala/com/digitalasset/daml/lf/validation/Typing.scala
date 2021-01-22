@@ -198,6 +198,7 @@ private[validation] object Typing {
       BFromTextNumeric -> TForall(alpha.name -> KNat, TText ->: TOptional(TNumeric(alpha))),
       BFromTextCodePoints -> (TText ->: TList(TInt64)),
       BError -> TForall(alpha.name -> KStar, TText ->: alpha),
+      BRaise -> TForall(alpha.name -> KStar, TText ->: alpha),
       // ComparisonsA
       BLessNumeric -> tNumComparison,
       BLessEqNumeric -> tNumComparison,

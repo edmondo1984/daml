@@ -1377,6 +1377,12 @@ private[lf] object SBuiltin {
       throw DamlEUserError(args.get(0).asInstanceOf[SText].value)
   }
 
+  /** $raise :: Text -> a */
+  final case object SBRaise extends SBuiltinPure(1) {
+    override private[speedy] final def executePure(args: util.ArrayList[SValue]): SValue =
+      throw DamlEUserError("Raise:" + args.get(0).asInstanceOf[SText].value)
+  }
+
   /** $to_any
     *    :: t
     *    -> Any (where t = ty)

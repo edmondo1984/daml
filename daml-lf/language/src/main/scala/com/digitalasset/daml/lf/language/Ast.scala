@@ -426,6 +426,9 @@ object Ast {
   // Errors
   final case object BError extends BuiltinFunction(1) // : ∀a. Text → a
 
+  // Exceptions
+  final case object BRaise extends BuiltinFunction(1) // : ∀a. Text → a
+
   // Comparisons
   final case object BLessNumeric extends BuiltinFunction(2) // :  ∀s. Numeric s → Numeric s → Bool
   final case object BLessEqNumeric

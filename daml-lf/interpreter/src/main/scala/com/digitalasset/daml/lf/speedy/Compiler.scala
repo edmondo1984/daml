@@ -509,6 +509,9 @@ private[lf] final class Compiler(
           // Errors
           case BError => SBError
 
+          // Exceptions
+          case BRaise => SBRaise
+
           // Comparison
           case BEqualContractId => SBEqual
           case BEqual => SBEqual

@@ -218,6 +218,7 @@ class ParsersSpec extends AnyWordSpec with ScalaCheckPropertyChecks with Matcher
         "TO_TEXT_PARTY" -> BToTextParty,
         "TO_TEXT_DATE" -> BToTextDate,
         "ERROR" -> BError,
+        "RAISE" -> BRaise,
         "LESS_NUMERIC" -> BLessNumeric,
         "LESS_EQ_NUMERIC" -> BLessEqNumeric,
         "GREATER_NUMERIC" -> BGreaterNumeric,
