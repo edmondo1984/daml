@@ -61,7 +61,7 @@ import System.Directory ( doesDirectoryExist, getDirectoryContents,
                           doesFileExist, removeFile,
                           getCurrentDirectory )
 import System.Exit ( exitWith, ExitCode(..) )
-import System.Environment ( getProgName, getEnv )
+import System.Environment ( getProgName )
 #if defined(darwin_HOST_OS) || defined(linux_HOST_OS) || defined(mingw32_HOST_OS)
 import System.Environment ( getExecutablePath )
 #endif
@@ -213,7 +213,6 @@ stackUpTo to_modify = dropWhile ((/= to_modify) . location)
 
 getPkgDatabases :: Verbosity
                 -> GhcPkg.DbOpenMode mode DbModifySelector
-                -> Bool    -- use the user db
                 -> Bool    -- read caches, if available
                 -> Bool    -- expand vars, like ${pkgroot} and $topdir
                 -> [Flag]
@@ -228,7 +227,7 @@ getPkgDatabases :: Verbosity
                           -- is used as the list of package DBs for
                           -- commands that just read the DB, such as 'list'.
 
-getPkgDatabases verbosity mode use_user use_cache expand_vars my_flags = do
+getPkgDatabases verbosity mode use_cache expand_vars my_flags = do
   -- first we determine the location of the global package config.  On Windows,
   -- this is found relative to the ghc-pkg.exe binary, whereas on Unix the
   -- location is passed to the binary using the --global-package-db flag by the
@@ -252,46 +251,14 @@ getPkgDatabases verbosity mode use_user use_cache expand_vars my_flags = do
   -- package db lives in ghc's libdir.
   top_dir <- absolutePath (takeDirectory global_conf)
 
-  -- let no_user_db = FlagNoUserDb `elem` my_flags
-
-  -- get the location of the user package database, and create it if necessary
-  -- getAppUserDataDirectory can fail (e.g. if $HOME isn't set)
-  -- e_appdir <- tryIO $ getAppUserDataDirectory "ghc"
-
-  mb_user_conf <- return Nothing
-
   -- If the user database exists, and for "use_user" commands (which includes
   -- "ghc-pkg check" and all commands that modify the db) we will attempt to
   -- use the user db.
-  let sys_databases
-        | Just (user_conf,user_exists) <- mb_user_conf,
-          use_user || user_exists = [user_conf, global_conf]
-        | otherwise               = [global_conf]
+  let sys_databases = [global_conf]
 
-  e_pkg_path <- tryIO (System.Environment.getEnv "GHC_PACKAGE_PATH")
-  let env_stack =
-        case e_pkg_path of
-                Left  _ -> sys_databases
-                Right path
-                  | not (null path) && isSearchPathSeparator (last path)
-                  -> splitSearchPath (init path) ++ sys_databases
-                  | otherwise
-                  -> splitSearchPath path
+  let env_stack = sys_databases
 
-        -- The "global" database is always the one at the bottom of the stack.
-        -- This is the database we modify by default.
-      virt_global_conf = last env_stack
-
-  let db_flags = [ f | Just f <- map is_db_flag my_flags ]
-         where is_db_flag FlagUser
-                      | Just (user_conf, _user_exists) <- mb_user_conf
-                      = Just user_conf
-               is_db_flag FlagGlobal     = Just virt_global_conf
-               is_db_flag (FlagConfig f) = Just f
-               is_db_flag _              = Nothing
-
-  let flag_db_names | null db_flags = env_stack
-                    | otherwise     = reverse (nub db_flags)
+  let flag_db_names = env_stack
 
   -- For a "modify" command, treat all the databases as
   -- a stack, where we are modifying the top one, but it
@@ -305,11 +272,9 @@ getPkgDatabases verbosity mode use_user use_cache expand_vars my_flags = do
                      [ f | FlagConfig f <- reverse my_flags ]
                      ++ env_stack
 
-      top_db = if null db_flags
-               then virt_global_conf
-               else last db_flags
+      top_db = global_conf
 
-  (db_stack, db_to_operate_on) <- getDatabases top_dir mb_user_conf
+  (db_stack, db_to_operate_on) <- getDatabases top_dir
                                                flag_db_names final_stack top_db
 
   let flag_db_stack = [ db | db_name <- flag_db_names,
@@ -323,7 +288,7 @@ getPkgDatabases verbosity mode use_user use_cache expand_vars my_flags = do
 
   return (db_stack, db_to_operate_on, flag_db_stack)
   where
-    getDatabases top_dir mb_user_conf flag_db_names
+    getDatabases top_dir flag_db_names
                  final_stack top_db = case mode of
       -- When we open in read only mode, we simply read all of the databases/
       GhcPkg.DbOpenReadOnly -> do
@@ -339,7 +304,7 @@ getPkgDatabases verbosity mode use_user use_cache expand_vars my_flags = do
               Nothing -> if db_path /= top_db
                 then (, Nothing) <$> readDatabase db_path
                 else do
-                  db <- readParseDatabase verbosity mb_user_conf
+                  db <- readParseDatabase verbosity
                                           mode use_cache db_path
                     `Exception.catch` couldntOpenDbForModification db_path
                   let ro_db = db { packageDbLock = GhcPkg.DbOpenReadOnly }
@@ -376,7 +341,7 @@ getPkgDatabases verbosity mode use_user use_cache expand_vars my_flags = do
                   -- to check if it's for modification first before throwing an
                   -- error, so we attempt to open it in read only mode.
                   Exception.handle openRo $ do
-                    db <- readParseDatabase verbosity mb_user_conf
+                    db <- readParseDatabase verbosity
                                             mode use_cache db_path
                     let ro_db = db { packageDbLock = GhcPkg.DbOpenReadOnly }
                     if hasPkg db
@@ -404,7 +369,7 @@ getPkgDatabases verbosity mode use_user use_cache expand_vars my_flags = do
         -- Parse package db in read-only mode.
         readDatabase :: FilePath -> IO (PackageDB 'GhcPkg.DbReadOnly)
         readDatabase db_path = do
-          db <- readParseDatabase verbosity mb_user_conf
+          db <- readParseDatabase verbosity
                                   GhcPkg.DbOpenReadOnly use_cache db_path
           if expand_vars
             then return $ mungePackageDBPaths top_dir db
@@ -427,18 +392,11 @@ lookForPackageDBIn dir = do
     if exists_file then return (Just path_file) else return Nothing
 
 readParseDatabase :: forall mode t. Verbosity
-                  -> Maybe (FilePath,Bool)
                   -> GhcPkg.DbOpenMode mode t
                   -> Bool -- use cache
                   -> FilePath
                   -> IO (PackageDB mode)
-readParseDatabase verbosity mb_user_conf mode use_cache path
-  -- the user database (only) is allowed to be non-existent
-  | Just (user_conf,False) <- mb_user_conf, path == user_conf
-  = do lock <- F.forM mode $ \_ -> do
-         createDirectoryIfMissing True path
-         GhcPkg.lockPackageDb cache
-       mkPackageDB [] lock
+readParseDatabase verbosity mode use_cache path
   | otherwise
   = do e <- tryIO $ getDirectoryContents path
        case e of
@@ -447,7 +405,7 @@ readParseDatabase verbosity mb_user_conf mode use_cache path
               -- We provide a limited degree of backwards compatibility for
               -- old single-file style db:
               mdb <- tryReadParseOldFileStyleDatabase verbosity
-                       mb_user_conf mode use_cache path
+                       mode use_cache path
               case mdb of
                 Just db -> return db
                 Nothing ->
@@ -524,9 +482,6 @@ readParseDatabase verbosity mb_user_conf mode use_cache path
     cache = path </> cachefilename
 
     recacheAdvice
-      | Just (user_conf, True) <- mb_user_conf, path == user_conf
-      = "Use 'ghc-pkg recache --user' to fix."
-      | otherwise
       = "Use 'ghc-pkg recache' to fix."
 
     mkPackageDB :: [InstalledPackageInfo]
@@ -625,10 +580,10 @@ mungePackagePaths top_dir pkgroot pkg =
 
 -- ghc itself also cooperates in this workaround
 
-tryReadParseOldFileStyleDatabase :: Verbosity -> Maybe (FilePath, Bool)
+tryReadParseOldFileStyleDatabase :: Verbosity
                                  -> GhcPkg.DbOpenMode mode t -> Bool -> FilePath
                                  -> IO (Maybe (PackageDB mode))
-tryReadParseOldFileStyleDatabase verbosity mb_user_conf
+tryReadParseOldFileStyleDatabase verbosity
                                  mode use_cache path = do
   -- assumes we've already established that path exists and is not a dir
   content <- readFile path `catchIO` \_ -> return ""
@@ -640,7 +595,7 @@ tryReadParseOldFileStyleDatabase verbosity mb_user_conf
       direxists <- doesDirectoryExist path_dir
       if direxists
         then do
-          db <- readParseDatabase verbosity mb_user_conf mode use_cache path_dir
+          db <- readParseDatabase verbosity mode use_cache path_dir
           -- but pretend it was at the original location
           return $ Just db {
               location         = path,
@@ -948,7 +903,7 @@ recache :: Verbosity -> [Flag] -> IO ()
 recache verbosity my_flags = do
   (_db_stack, GhcPkg.DbOpenReadWrite db_to_operate_on, _flag_dbs) <-
     getPkgDatabases verbosity (GhcPkg.DbOpenReadWrite TopOne)
-      True{-use user-} False{-no cache-} False{-expand vars-} my_flags
+      False{-no cache-} False{-expand vars-} my_flags
   changeDB verbosity [] db_to_operate_on _db_stack
 
 findPackage :: PackageArg -> [InstalledPackageInfo] -> [InstalledPackageInfo]
