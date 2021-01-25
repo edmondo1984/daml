@@ -42,10 +42,9 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
     val expected = Right(SValue.SInt64(1011))
     runExpr(exp) shouldBe expected
   }
-  "func(2) -- exception thrown!!" in {
+  "func(2) -- exception thrown and caught" in {
     val exp = e"M:func 2"
-    //val expected = Right(SValue.SInt64(1100)) // TODO: when we implement exceptions
-    val expected = Left(DamlEUserError("Raise:myThrow"))
+    val expected = Right(SValue.SInt64(1100))
     runExpr(exp) shouldBe expected
   }
   "func(3) -- no exception" in {

@@ -1377,10 +1377,32 @@ private[lf] object SBuiltin {
       throw DamlEUserError(args.get(0).asInstanceOf[SText].value)
   }
 
+  def unwindToHandler(machine: Machine): Boolean = {
+    val catchIndex =
+      machine.kontStack.asScala.lastIndexWhere(_.isInstanceOf[KHandler])
+    if (catchIndex >= 0) {
+      val kh = machine.kontStack.get(catchIndex).asInstanceOf[KHandler]
+      machine.kontStack.subList(catchIndex, machine.kontStack.size).clear()
+      machine.env.subList(kh.envSize, machine.env.size).clear()
+      machine.ctrl = kh.handler
+      machine.envBase = machine.env.size
+      true
+    } else
+      false
+  }
+
   /** $raise :: Text -> a */
-  final case object SBRaise extends SBuiltinPure(1) {
-    override private[speedy] final def executePure(args: util.ArrayList[SValue]): SValue =
-      throw DamlEUserError("Raise:" + args.get(0).asInstanceOf[SText].value)
+  final case object SBRaise extends SBuiltin(1) {
+    override private[speedy] final def execute(
+        args: util.ArrayList[SValue],
+        machine: Machine,
+    ): Unit = {
+      if (unwindToHandler(machine)) {
+        // do nothing
+      } else {
+        throw DamlEUserError("Unhandled-Raise:" + args.get(0).asInstanceOf[SText].value)
+      }
+    }
   }
 
   /** $catch :: (Unit -> a) -> (Unit -> a) -> a */
@@ -1389,11 +1411,12 @@ private[lf] object SBuiltin {
         args: util.ArrayList[SValue],
         machine: Machine,
     ): Unit = {
-      val handler: SValue = args.get(0)
-      val _ = handler // handler ignored
-      val body: SValue = args.get(1)
       val unit: SExprAtomic = SEValue(SValue.SValue.Unit)
-      machine.enterApplication(body, Array(unit)) // TODO: this never catches, it just run the body
+      val handler: SValue = args.get(0)
+      val handlerE: SExpr = SEApp(SEValue(handler), Array(unit))
+      val body: SValue = args.get(1)
+      machine.pushKont(KHandler(machine, handlerE))
+      machine.enterApplication(body, Array(unit))
     }
   }
 

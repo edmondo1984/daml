@@ -1224,6 +1224,19 @@ private[lf] object Speedy {
     }
   }
 
+  /**    A Handler continuation for exceptions.
+    */
+  private[speedy] final case class KHandler(
+      machine: Machine,
+      handler: SExpr,
+  ) extends Kont
+      with SomeArrayEquals {
+    val envSize = machine.env.size
+    def execute(v: SValue) = {
+      machine.returnValue = v
+    }
+  }
+
   /** A catch frame marks the point to which an exception (of type 'SErrorDamlException')
     * is unwound. The 'envSize' specifies the size to which the environment must be pruned.
     * If an exception is raised and 'KCatch' is found from kont-stack, then 'handler' is
