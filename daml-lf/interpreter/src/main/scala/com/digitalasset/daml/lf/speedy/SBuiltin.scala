@@ -1391,6 +1391,17 @@ private[lf] object SBuiltin {
       false
   }
 
+  /** $run-update :: Update a -> a */
+  final case object SBRunUpdate extends SBuiltin(1) {
+    override private[speedy] final def execute(
+        args: util.ArrayList[SValue],
+        machine: Machine,
+    ): Unit = {
+      // NICK. This should supply the token to start the update thunk running.
+      machine.returnValue = args.get(0)
+    }
+  }
+
   /** $raise :: Text -> a */
   final case object SBRaise extends SBuiltin(1) {
     override private[speedy] final def execute(
@@ -1398,8 +1409,10 @@ private[lf] object SBuiltin {
         machine: Machine,
     ): Unit = {
       if (unwindToHandler(machine)) {
+        //println("SBCatch::unwindToHandler() returned TRUE")
         // do nothing
       } else {
+        //println("SBCatch::unwindToHandler() returned FALSE")
         throw DamlEUserError("Unhandled-Raise:" + args.get(0).asInstanceOf[SText].value)
       }
     }
@@ -1411,6 +1424,7 @@ private[lf] object SBuiltin {
         args: util.ArrayList[SValue],
         machine: Machine,
     ): Unit = {
+      //println("SBCatch::execute()...")
       val unit: SExprAtomic = SEValue(SValue.SValue.Unit)
       val handler: SValue = args.get(0)
       val handlerE: SExpr = SEApp(SEValue(handler), Array(unit))

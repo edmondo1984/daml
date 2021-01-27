@@ -437,8 +437,8 @@ private[lf] final class Compiler(
       case EThrow(_, _, _) =>
         // TODO, NICK: dont ignore the payload of EThrow
         // TODO https://github.com/digital-asset/daml/issues/8020
-        val message : SExpr = SEValue(SText("any text here. nothing examines it"))
-        SEApp(SEBuiltin(SBRaise),Array(message))
+        val message: SExpr = SEValue(SText("any text here. nothing examines it"))
+        SEApp(SEBuiltin(SBRaise), Array(message))
     }
 
   @inline
@@ -514,8 +514,9 @@ private[lf] final class Compiler(
           // Errors
           case BError => SBError
 
-          // Exceptions
+          // NICK: temp stuff for Exception dev
           case BCatch => SBCatch
+          case BRunUpdate => SBRunUpdate
 
           // Comparison
           case BEqualContractId => SBEqual
@@ -715,10 +716,34 @@ private[lf] final class Compiler(
         LookupByKeyDefRef(templateId)(compile(key))
       case UpdateFetchByKey(RetrieveByKey(templateId, key)) =>
         FetchByKeyDefRef(templateId)(compile(key))
-      case UpdateTryCatch(_, _, _, _) =>
+      case UpdateTryCatch(typ, bodyE, binder, handlerE) =>
         // TODO https://github.com/digital-asset/daml/issues/8020
-        sys.error("exceptions not supported")
+        //sys.error("exceptions not supported")
+        val _ = (typ, binder) // TODO, NICK, dont ignore components
+        SEApp(
+          SEBuiltin(SBCatch),
+          Array(
+            unaryFunction { tokenPos =>
+              app(deSome(compile(handlerE)), svar(tokenPos))
+            },
+            unaryFunction { tokenPos =>
+              app(compile(bodyE), svar(tokenPos))
+            },
+          ),
+        )
     }
+
+  private[this] def deSome(e: SExpr): SExpr = { // NICK, Assume all handlers actually Handle!
+    SECase(
+      e,
+      Array(
+        SCaseAlt(
+          SCPSome,
+          SEVar(1),
+        )
+      ),
+    )
+  }
 
   @tailrec
   private[this] def compileAbss(expr0: Expr, arity: Int = 0): SExpr =
