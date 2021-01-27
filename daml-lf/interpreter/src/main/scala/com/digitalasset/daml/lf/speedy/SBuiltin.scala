@@ -1377,20 +1377,6 @@ private[lf] object SBuiltin {
       throw DamlEUserError(args.get(0).asInstanceOf[SText].value)
   }
 
-  def unwindToHandler(machine: Machine): Boolean = {
-    val catchIndex =
-      machine.kontStack.asScala.lastIndexWhere(_.isInstanceOf[KHandler])
-    if (catchIndex >= 0) {
-      val kh = machine.kontStack.get(catchIndex).asInstanceOf[KHandler]
-      machine.kontStack.subList(catchIndex, machine.kontStack.size).clear()
-      machine.env.subList(kh.envSize, machine.env.size).clear()
-      machine.ctrl = kh.handler
-      machine.envBase = machine.env.size
-      true
-    } else
-      false
-  }
-
   /** $run-update :: Update a -> a */
   final case object SBRunUpdate extends SBuiltin(1) {
     override private[speedy] final def execute(
@@ -1399,22 +1385,6 @@ private[lf] object SBuiltin {
     ): Unit = {
       val update: SValue = args.get(0)
       machine.enterApplication(update, Array(SExpr.SEValue.Token))
-    }
-  }
-
-  /** $raise :: Text -> a */
-  final case object SBRaise extends SBuiltin(1) {
-    override private[speedy] final def execute(
-        args: util.ArrayList[SValue],
-        machine: Machine,
-    ): Unit = {
-      if (unwindToHandler(machine)) {
-        //println("SBCatch::unwindToHandler() returned TRUE")
-        // do nothing
-      } else {
-        //println("SBCatch::unwindToHandler() returned FALSE")
-        throw DamlEUserError("Unhandled-Raise:" + args.get(0).asInstanceOf[SText].value)
-      }
     }
   }
 

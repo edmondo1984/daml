@@ -434,11 +434,12 @@ private[lf] final class Compiler(
       case EFromAnyException(_, _) | EToAnyException(_, _) =>
         // TODO https://github.com/digital-asset/daml/issues/8020
         sys.error("exceptions not supported")
-      case EThrow(_, _, _) =>
-        // TODO, NICK: dont ignore the payload of EThrow
-        // TODO https://github.com/digital-asset/daml/issues/8020
-        val message: SExpr = SEValue(SText("any text here. nothing examines it"))
-        SEApp(SEBuiltin(SBRaise), Array(message))
+      case EThrow(_, _, exp) =>
+        // TODO, NICK, need support for BMakeGeneralError etc to allow payload to be compiled
+        //SEThrow(compile(exp))
+        // so for now we'll just put in a unit -- it's ignored later anyway at the moment
+        val _ = exp
+        SEThrow(SEValue.Unit)
     }
 
   @inline
@@ -1167,6 +1168,9 @@ private[lf] final class Compiler(
           closureConvert(remaps, fin),
         )
 
+      case SEThrow(exp) =>
+        SEThrow(closureConvert(remaps, exp))
+
       case SELabelClosure(label, expr) =>
         SELabelClosure(label, closureConvert(remaps, expr))
 
@@ -1253,6 +1257,9 @@ private[lf] final class Compiler(
           go(body, bound, go(handler, bound, go(fin, bound, free)))
         case SELabelClosure(_, expr) =>
           go(expr, bound, free)
+        case SEThrow(expr) =>
+          go(expr, bound, free)
+
         case x: SEDamlException =>
           throw CompilationError(s"unexpected SEDamlException: $x")
         case x: SEImportValue =>
@@ -1351,6 +1358,9 @@ private[lf] final class Compiler(
           go(body)
         case SELabelClosure(_, expr) =>
           go(expr)
+        case SEThrow(expr) =>
+          go(expr)
+
         case x: SEDamlException =>
           throw CompilationError(s"unexpected SEDamlException: $x")
         case x: SEImportValue =>

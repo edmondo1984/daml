@@ -361,6 +361,14 @@ private[lf] object Anf {
         )
       }
 
+      case SEThrow(exp) => {
+        Bounce(() =>
+          transformExp(depth, env, exp, k) { (depth, exp, txK) =>
+            Bounce(() => transform(depth, SEThrow(exp), txK))
+          }
+        )
+      }
+
       case x: SEAbs => throw CompilationError(s"flatten: unexpected: $x")
       case x: SEDamlException => throw CompilationError(s"flatten: unexpected: $x")
       case x: SEAppAtomicFun => throw CompilationError(s"flatten: unexpected: $x")

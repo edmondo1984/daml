@@ -552,6 +552,9 @@ private[lf] object Pretty {
         case SELet1Builtin(builtin, args, body) =>
           prettySExpr(index)(SELet1General(SEAppAtomicSaturatedBuiltin(builtin, args), body))
 
+        case SEThrow(exp) =>
+          text("throw") + char('(') + prettySExpr(index)(exp) + char(')')
+
         case x: SEBuiltinRecursiveDefinition => str(x)
         case x: SEImportValue => str(x)
         case x: SELabelClosure => str(x)

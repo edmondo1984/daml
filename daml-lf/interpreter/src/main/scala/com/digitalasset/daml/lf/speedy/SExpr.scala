@@ -18,6 +18,8 @@ import com.daml.lf.speedy.Speedy._
 import com.daml.lf.speedy.SError._
 import com.daml.lf.speedy.SBuiltin._
 
+import scala.jdk.CollectionConverters._
+
 /** The speedy expression:
   * - de Bruijn indexed.
   * - closure converted.
@@ -370,6 +372,33 @@ object SExpr {
   final case class SEImportValue(value: V[V.ContractId]) extends SExpr {
     def execute(machine: Machine): Unit = {
       machine.importValue(value)
+    }
+  }
+
+  private def unwindToHandler(machine: Machine): Boolean = {
+    val catchIndex =
+      machine.kontStack.asScala.lastIndexWhere(_.isInstanceOf[KHandler])
+    if (catchIndex >= 0) {
+      val kh = machine.kontStack.get(catchIndex).asInstanceOf[KHandler]
+      machine.kontStack.subList(catchIndex, machine.kontStack.size).clear()
+      machine.env.subList(kh.envSize, machine.env.size).clear()
+      machine.ctrl = kh.handler
+      machine.envBase = machine.env.size
+      true
+    } else
+      false
+  }
+
+  /** Exceptions: Throw and Catch */
+  final case class SEThrow(expr: SExpr) extends SExpr {
+    def execute(machine: Machine): Unit = {
+      if (unwindToHandler(machine)) {
+        //println("SEThrow::unwindToHandler() returned TRUE")
+        // do nothing
+      } else {
+        //println("SEThrow::unwindToHandler() returned FALSE")
+        throw DamlEUserError("Unhandled-Throw")
+      }
     }
   }
 
