@@ -337,7 +337,7 @@ object SExpr {
     * This is on purpose very limited, with no mechanism to inspect the exception, nor a way
     * to access the value returned from 'body'.
     */
-  final case class SECatch(body: SExpr, handler: SExpr, fin: SExpr) extends SExpr {
+  final case class SECatchOLD(body: SExpr, handler: SExpr, fin: SExpr) extends SExpr {
     def execute(machine: Machine): Unit = {
       machine.pushKont(KCatch(machine, handler, fin))
       machine.ctrl = body
