@@ -281,7 +281,6 @@ private[parser] class ExprParser[P](parserParameters: ParserParameters[P]) {
     "FROM_TEXT_NUMERIC" -> BFromTextNumeric,
     "TEXT_TO_CODE_POINTS" -> BFromTextCodePoints,
     "ERROR" -> BError,
-    "RAISE" -> BRaise,
     "CATCH" -> BCatch,
     "LESS_NUMERIC" -> BLessNumeric,
     "LESS_EQ_NUMERIC" -> BLessEqNumeric,

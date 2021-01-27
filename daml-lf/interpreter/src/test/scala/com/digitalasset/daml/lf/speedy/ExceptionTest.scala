@@ -23,7 +23,7 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
        module M {
          val myThrow : forall (a: *). (Unit -> a) =
            /\ (a: *). \(u : Unit) ->
-             RAISE @a "myThrow";
+             throw @a @GeneralError (MAKE_GENERAL_ERROR "myThrow");
 
          val myCatch : forall (a: *). (Unit -> a) -> (Unit -> a) -> a =
            /\ (a: *). \ (handler: Unit -> a) (body: Unit -> a) ->

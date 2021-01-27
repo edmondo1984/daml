@@ -431,9 +431,14 @@ private[lf] final class Compiler(
         SBFromAny(ty)(compile(e))
       case ETypeRep(typ) =>
         SEValue(STypeRep(typ))
-      case EThrow(_, _, _) | EFromAnyException(_, _) | EToAnyException(_, _) =>
+      case EFromAnyException(_, _) | EToAnyException(_, _) =>
         // TODO https://github.com/digital-asset/daml/issues/8020
         sys.error("exceptions not supported")
+      case EThrow(_, _, _) =>
+        // TODO, NICK: dont ignore the payload of EThrow
+        // TODO https://github.com/digital-asset/daml/issues/8020
+        val message : SExpr = SEValue(SText("any text here. nothing examines it"))
+        SEApp(SEBuiltin(SBRaise),Array(message))
     }
 
   @inline
@@ -510,7 +515,6 @@ private[lf] final class Compiler(
           case BError => SBError
 
           // Exceptions
-          case BRaise => SBRaise
           case BCatch => SBCatch
 
           // Comparison
