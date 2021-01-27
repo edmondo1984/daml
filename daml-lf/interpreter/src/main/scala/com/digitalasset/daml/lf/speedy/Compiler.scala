@@ -515,7 +515,6 @@ private[lf] final class Compiler(
           case BError => SBError
 
           // NICK: temp stuff for Exception dev
-          case BCatch => SBCatch
           case BRunUpdate => SBRunUpdate
 
           // Comparison

@@ -426,8 +426,6 @@ object Ast {
   // Errors
   final case object BError extends BuiltinFunction(1) // : ∀a. Text → a
 
-  // Exceptions
-  final case object BCatch extends BuiltinFunction(2) // : ∀a. (Unit → a) → a → a
   final case object BRunUpdate extends BuiltinFunction(1) // : ∀a. Update a → a     //NICK, temp!
 
   // Comparisons
