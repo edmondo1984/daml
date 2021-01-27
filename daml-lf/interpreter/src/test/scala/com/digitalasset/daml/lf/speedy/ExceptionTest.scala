@@ -38,6 +38,12 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
        }
       """
 
+  "RUN_UPDATE supplies token" in {
+    val exp = e"RUN_UPDATE @Int64 (upure @Int64 42)"
+    val expected = Right(SValue.SInt64(42))
+    runExpr(exp) shouldBe expected
+  }
+
   "func(1) -- no exception" in {
     val exp = e"M:func 1"
     val expected = Right(SValue.SInt64(1011))

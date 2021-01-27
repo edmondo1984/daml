@@ -720,17 +720,20 @@ private[lf] final class Compiler(
         // TODO https://github.com/digital-asset/daml/issues/8020
         //sys.error("exceptions not supported")
         val _ = (typ, binder) // TODO, NICK, dont ignore components
-        SEApp(
-          SEBuiltin(SBCatch),
-          Array(
-            unaryFunction { tokenPos =>
-              app(deSome(compile(handlerE)), svar(tokenPos))
-            },
-            unaryFunction { tokenPos =>
-              app(compile(bodyE), svar(tokenPos))
-            },
-          ),
-        )
+        unaryFunction { tokenPos =>
+          val _ = tokenPos // NICK: drop the token on the floor because SBCatch doesn't need it
+          SEApp(
+            SEBuiltin(SBCatch),
+            Array(
+              unaryFunction { unitPos =>
+                app(deSome(compile(handlerE)), svar(unitPos))
+              },
+              unaryFunction { unitPos =>
+                app(compile(bodyE), svar(unitPos))
+              },
+            ),
+          )
+        }
     }
 
   private[this] def deSome(e: SExpr): SExpr = { // NICK, Assume all handlers actually Handle!

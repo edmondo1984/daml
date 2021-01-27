@@ -1397,8 +1397,8 @@ private[lf] object SBuiltin {
         args: util.ArrayList[SValue],
         machine: Machine,
     ): Unit = {
-      // NICK. This should supply the token to start the update thunk running.
-      machine.returnValue = args.get(0)
+      val update: SValue = args.get(0)
+      machine.enterApplication(update, Array(SExpr.SEValue.Token))
     }
   }
 
