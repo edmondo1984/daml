@@ -48,22 +48,24 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
          val throwCatchTest : (Int64 -> Int64) = \ (x: Int64) ->
            (ADD_INT64 1000
             (M:myCatch @Int64 (\(u : Text) -> 100) (\(u : Text) ->
-             ADD_INT64 10
-              (case (EQUAL @Int64 x 1) of True -> x
-    | False -> case (EQUAL @Int64 x 2) of True -> M:myThrow @Int64 "throw2"
-    | False -> case (EQUAL @Int64 x 3) of True -> M:myThrow @Int64 "throw3"
-    | False -> case (EQUAL @Int64 x 4) of True -> x
-    | False -> ERROR @Int64 "no-match1"))));
+             ADD_INT64 2000
+              (M:myCatch @Int64 (\(u : Text) -> 200) (\(u : Text) ->
+               ADD_INT64 4000
+                (case (EQUAL @Int64 x 1) of True -> x
+      | False -> case (EQUAL @Int64 x 2) of True -> M:myThrow @Int64 "throw2"
+      | False -> case (EQUAL @Int64 x 3) of True -> M:myThrow @Int64 "throw3"
+      | False -> case (EQUAL @Int64 x 4) of True -> x
+      | False -> ERROR @Int64 "no-match1"))))));
 
        }
       """)
 
     val testCases = Table[String, Long](
       ("expression", "expected"),
-      ("M:throwCatchTest 1", 1011),
-      ("M:throwCatchTest 2", 1100),
-      ("M:throwCatchTest 3", 1100),
-      ("M:throwCatchTest 4", 1014),
+      ("M:throwCatchTest 1", 7001),
+      ("M:throwCatchTest 2", 3200),
+      ("M:throwCatchTest 3", 3200),
+      ("M:throwCatchTest 4", 7004),
     )
 
     forEvery(testCases) { (exp: String, expected: Long) =>
