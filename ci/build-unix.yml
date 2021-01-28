@@ -60,7 +60,7 @@ steps:
                    eq(${{parameters.is_release}}, 'true'),
                    eq(variables['Build.SourceBranchName'], 'main'),
                    eq('${{parameters.name}}', 'linux'))
-  - template: ci/bash-lib.yml
+  - template: bash-lib.yml
     parameters:
       var_name: bash-lib
   - bash: |

@@ -28,7 +28,7 @@ steps:
       pathtoPublish: 'bazel-testlogs/'
       artifactName: 'Test logs'
 
-  - template: ci/bash-lib.yml
+  - template: bash-lib.yml
     parameters:
       var_name: bash-lib
 

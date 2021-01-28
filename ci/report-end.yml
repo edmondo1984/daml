@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 steps:
-  - template: ci/bash-lib.yml
+  - template: bash-lib.yml
     parameters:
       var_name: bash-lib
   - bash: |

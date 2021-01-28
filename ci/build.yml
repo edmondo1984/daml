@@ -7,7 +7,7 @@ jobs:
     name: 'ubuntu_20_04'
     demands: assignment -equals default
   steps:
-    - template: ci/bash-lib.yml
+    - template: bash-lib.yml
       parameters:
         var_name: bash-lib
     - bash: |
@@ -292,7 +292,7 @@ jobs:
     name: "ubuntu_20_04"
     demands: assignment -equals default
   steps:
-    - template: ci/bash-lib.yml
+    - template: bash-lib.yml
       parameters:
         var_name: bash-lib
     - bash: |

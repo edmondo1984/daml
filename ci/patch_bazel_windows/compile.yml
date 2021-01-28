@@ -11,7 +11,7 @@ jobs:
     name: ubuntu_20_04
   steps:
   - checkout: self
-  - template: ci/bash-lib.yml
+  - template: ../bash-lib.yml
     parameters:
       var_name: bash-lib
   - bash: |
