@@ -1226,13 +1226,26 @@ private[lf] object Speedy {
 
   /**    A Handler continuation for exceptions.
     */
-  private[speedy] final case class KHandler(
+  private[speedy] final case class KTryCatchHandler(
       machine: Machine,
       handler: SExpr,
   ) extends Kont
       with SomeArrayEquals {
+
     val envSize = machine.env.size
+
+    private val savedBase = machine.markBase()
+    private val frame = machine.frame
+    private val actuals = machine.actuals
+
+    // we must restore when catching a throw, or for normal execution
+    def restore() = {
+      machine.restoreBase(savedBase);
+      machine.restoreFrameAndActuals(frame, actuals)
+    }
+
     def execute(v: SValue) = {
+      restore();
       machine.returnValue = v
     }
   }

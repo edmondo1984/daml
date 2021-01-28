@@ -368,6 +368,16 @@ private[lf] object Anf {
           }
         )
       }
+      case SETryCatch(body0, handler0) =>
+        Bounce(() =>
+          flattenExp(depth, env, body0) { body =>
+            Bounce(() =>
+              flattenExp(depth, env, handler0) { handler =>
+                Bounce(() => transform(depth, SETryCatch(body.wrapped, handler.wrapped), k))
+              }
+            )
+          }
+        )
 
       case x: SEAbs => throw CompilationError(s"flatten: unexpected: $x")
       case x: SEDamlException => throw CompilationError(s"flatten: unexpected: $x")

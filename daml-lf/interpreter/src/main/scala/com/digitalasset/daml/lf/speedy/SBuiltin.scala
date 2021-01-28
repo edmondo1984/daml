@@ -1388,22 +1388,6 @@ private[lf] object SBuiltin {
     }
   }
 
-  /** $catch :: (Unit -> a) -> (Unit -> a) -> a */
-  final case object SBCatch extends SBuiltin(2) {
-    override private[speedy] final def execute(
-        args: util.ArrayList[SValue],
-        machine: Machine,
-    ): Unit = {
-      //println("SBCatch::execute()...")
-      val unit: SExprAtomic = SEValue(SValue.SValue.Unit)
-      val handler: SValue = args.get(0)
-      val handlerE: SExpr = SEApp(SEValue(handler), Array(unit))
-      val body: SValue = args.get(1)
-      machine.pushKont(KHandler(machine, handlerE))
-      machine.enterApplication(body, Array(unit))
-    }
-  }
-
   /** $to_any
     *    :: t
     *    -> Any (where t = ty)

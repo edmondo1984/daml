@@ -377,13 +377,14 @@ object SExpr {
 
   private def unwindToHandler(machine: Machine): Boolean = {
     val catchIndex =
-      machine.kontStack.asScala.lastIndexWhere(_.isInstanceOf[KHandler])
+      machine.kontStack.asScala.lastIndexWhere(_.isInstanceOf[KTryCatchHandler])
     if (catchIndex >= 0) {
-      val kh = machine.kontStack.get(catchIndex).asInstanceOf[KHandler]
+      val kh = machine.kontStack.get(catchIndex).asInstanceOf[KTryCatchHandler]
       machine.kontStack.subList(catchIndex, machine.kontStack.size).clear()
       machine.env.subList(kh.envSize, machine.env.size).clear()
-      machine.ctrl = kh.handler
       machine.envBase = machine.env.size
+      kh.restore()
+      machine.ctrl = kh.handler //NICK, TODO: need to pass payload
       true
     } else
       false
@@ -399,6 +400,14 @@ object SExpr {
         //println("SEThrow::unwindToHandler() returned FALSE")
         throw DamlEUserError("Unhandled-Throw")
       }
+    }
+  }
+
+  final case class SETryCatch(body: SExpr, handler: SExpr) extends SExpr {
+    def execute(machine: Machine): Unit = {
+      // TODO, NICK, is this complete?
+      machine.pushKont(KTryCatchHandler(machine, handler))
+      machine.ctrl = body
     }
   }
 

@@ -554,6 +554,9 @@ private[lf] object Pretty {
 
         case SEThrow(exp) =>
           text("throw") + char('(') + prettySExpr(index)(exp) + char(')')
+        case SETryCatch(body, handler) =>
+          text("try-catch") + char('(') + prettySExpr(index)(body) + text(", ") +
+            prettySExpr(index)(handler) + char(')')
 
         case x: SEBuiltinRecursiveDefinition => str(x)
         case x: SEImportValue => str(x)

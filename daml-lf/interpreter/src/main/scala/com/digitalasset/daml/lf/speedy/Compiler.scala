@@ -716,23 +716,17 @@ private[lf] final class Compiler(
         LookupByKeyDefRef(templateId)(compile(key))
       case UpdateFetchByKey(RetrieveByKey(templateId, key)) =>
         FetchByKeyDefRef(templateId)(compile(key))
-      case UpdateTryCatch(typ, bodyE, binder, handlerE) =>
-        // TODO https://github.com/digital-asset/daml/issues/8020
-        //sys.error("exceptions not supported")
-        val _ = (typ, binder) // TODO, NICK, dont ignore components
-        unaryFunction { tokenPos =>
-          val _ = tokenPos // NICK: drop the token on the floor because SBCatch doesn't need it
-          SEApp(
-            SEBuiltin(SBCatch),
-            Array(
-              unaryFunction { unitPos =>
-                app(deSome(compile(handlerE)), svar(unitPos))
-              },
-              unaryFunction { unitPos =>
-                app(compile(bodyE), svar(unitPos))
-              },
-            ),
-          )
+
+      case UpdateTryCatch(_, body, binder, handler) =>
+        val _ = binder // TODO, need binder when payloads are supported
+        withEnv { _ => // NICK, what exactly is this for?
+          unaryFunction { tokenPos =>
+            def payload: SExpr = SEValue(SText("dummy-payload"))
+            SETryCatch(
+              app(compile(body), svar(tokenPos)),
+              app(deSome(compile(handler)), payload),
+            )
+          }
         }
     }
 
@@ -1171,6 +1165,12 @@ private[lf] final class Compiler(
       case SEThrow(exp) =>
         SEThrow(closureConvert(remaps, exp))
 
+      case SETryCatch(body, handler) =>
+        SETryCatch(
+          closureConvert(remaps, body),
+          closureConvert(remaps, handler), //NICK, shift 1 for payload on stack?
+        )
+
       case SELabelClosure(label, expr) =>
         SELabelClosure(label, closureConvert(remaps, expr))
 
@@ -1259,6 +1259,8 @@ private[lf] final class Compiler(
           go(expr, bound, free)
         case SEThrow(expr) =>
           go(expr, bound, free)
+        case SETryCatch(body, handler) =>
+          go(body, bound, go(handler, bound, free))
 
         case x: SEDamlException =>
           throw CompilationError(s"unexpected SEDamlException: $x")
@@ -1360,6 +1362,9 @@ private[lf] final class Compiler(
           go(expr)
         case SEThrow(expr) =>
           go(expr)
+        case SETryCatch(body, handler) =>
+          go(body)
+          go(handler)
 
         case x: SEDamlException =>
           throw CompilationError(s"unexpected SEDamlException: $x")
