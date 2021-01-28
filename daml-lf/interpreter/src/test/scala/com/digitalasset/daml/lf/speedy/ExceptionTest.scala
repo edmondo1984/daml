@@ -21,19 +21,19 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
   val pkg: Package =
     p"""
        module M {
-         val myThrow : forall (a: *). (Unit -> a) =
-           /\ (a: *). \(u : Unit) ->
+         val myThrow : forall (a: *). (Text -> a) =
+           /\ (a: *). \(u : Text) ->
              throw @a @GeneralError (MAKE_GENERAL_ERROR "myThrow");
 
-         val myCatch : forall (a: *). (Unit -> a) -> (Unit -> a) -> a =
-           /\ (a: *). \ (handler: Unit -> a) (body: Unit -> a) ->
-             RUN_UPDATE @a (try @a (upure @a (body ())) catch e -> Some @(Update a) (upure @a (handler ())));
+         val myCatch : forall (a: *). (Text -> a) -> (Text -> a) -> a =
+           /\ (a: *). \ (handler: Text -> a) (body: Text -> a) ->
+             RUN_UPDATE @a (try @a (upure @a (body "body-unitish")) catch e -> Some @(Update a) (upure @a (handler "handler-unitish")));
 
          val func : (Int64 -> Int64) = \ (x: Int64) ->
            (ADD_INT64 1000
-            (M:myCatch @Int64 (\(u : Unit) -> 100) (\(u : Unit) ->
+            (M:myCatch @Int64 (\(u : Text) -> 100) (\(u : Text) ->
              ADD_INT64 10
-              (case (EQUAL @Int64 (ADD_INT64 x 40) 42) of True -> M:myThrow @Int64 () | False -> x))));
+              (case (EQUAL @Int64 (ADD_INT64 x 40) 42) of True -> M:myThrow @Int64 "throw-unitish" | False -> x))));
        }
       """
 
