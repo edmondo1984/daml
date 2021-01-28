@@ -38,8 +38,8 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
     val pkgs: PureCompiledPackages = typeAndCompile(p"""
        module M {
          val myThrow : forall (a: *). (Text -> a) =
-           /\ (a: *). \(u : Text) ->
-             throw @a @GeneralError (MAKE_GENERAL_ERROR "myThrow");
+           /\ (a: *). \(mes : Text) ->
+             throw @a @GeneralError (MAKE_GENERAL_ERROR mes);
 
          val myCatch : forall (a: *). (Text -> a) -> (Text -> a) -> a =
            /\ (a: *). \ (handler: Text -> a) (body: Text -> a) ->
@@ -49,7 +49,12 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
            (ADD_INT64 1000
             (M:myCatch @Int64 (\(u : Text) -> 100) (\(u : Text) ->
              ADD_INT64 10
-              (case (EQUAL @Int64 (ADD_INT64 x 40) 42) of True -> M:myThrow @Int64 "throw-unitish" | False -> x))));
+              (case (EQUAL @Int64 x 1) of True -> x
+    | False -> case (EQUAL @Int64 x 2) of True -> M:myThrow @Int64 "throw2"
+    | False -> case (EQUAL @Int64 x 3) of True -> M:myThrow @Int64 "throw3"
+    | False -> case (EQUAL @Int64 x 4) of True -> x
+    | False -> ERROR @Int64 "no-match1"))));
+
        }
       """)
 
@@ -57,7 +62,8 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
       ("expression", "expected"),
       ("M:throwCatchTest 1", 1011),
       ("M:throwCatchTest 2", 1100),
-      ("M:throwCatchTest 3", 1013),
+      ("M:throwCatchTest 3", 1100),
+      ("M:throwCatchTest 4", 1014),
     )
 
     forEvery(testCases) { (exp: String, expected: Long) =>
