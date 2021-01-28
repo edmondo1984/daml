@@ -721,10 +721,9 @@ private[lf] final class Compiler(
         val _ = binder // TODO, need binder when payloads are supported
         withEnv { _ => // NICK, what exactly is this for?
           unaryFunction { tokenPos =>
-            def payload: SExpr = SEValue(SText("dummy-payload"))
             SETryCatch(
               app(compile(body), svar(tokenPos)),
-              app(deSome(compile(handler)), payload),
+              deSome(compile(handler)),
             )
           }
         }

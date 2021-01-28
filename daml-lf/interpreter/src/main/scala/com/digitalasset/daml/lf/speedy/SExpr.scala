@@ -375,7 +375,7 @@ object SExpr {
     }
   }
 
-  private def unwindToHandler(machine: Machine): Boolean = {
+  private def unwindToHandler(machine: Machine): Option[SExpr] = {
     val catchIndex =
       machine.kontStack.asScala.lastIndexWhere(_.isInstanceOf[KTryCatchHandler])
     if (catchIndex >= 0) {
@@ -384,28 +384,30 @@ object SExpr {
       machine.env.subList(kh.envSize, machine.env.size).clear()
       machine.envBase = machine.env.size
       kh.restore()
-      machine.ctrl = kh.handler //NICK, TODO: need to pass payload
-      true
+      Some(kh.handler)
     } else
-      false
+      None
   }
 
   /** Exceptions: Throw and Catch */
+
   final case class SEThrow(expr: SExpr) extends SExpr {
     def execute(machine: Machine): Unit = {
-      if (unwindToHandler(machine)) {
-        //println("SEThrow::unwindToHandler() returned TRUE")
-        // do nothing
-      } else {
-        //println("SEThrow::unwindToHandler() returned FALSE")
-        throw DamlEUserError("Unhandled-Throw")
+      unwindToHandler(machine) match {
+        case None =>
+          throw DamlEUserError("Unhandled-Throw")
+        case Some(handler) =>
+          //println("SEThrow::unwindToHandler() returned TRUE")
+          def app(f: SExpr, a: SExpr) = SEApp(f, Array(a))
+          val payload: SExpr = SEValue(SText("dummy-payload"))
+          val appliedhandler: SExpr = app(handler, payload)
+          machine.ctrl = appliedhandler
       }
     }
   }
 
   final case class SETryCatch(body: SExpr, handler: SExpr) extends SExpr {
     def execute(machine: Machine): Unit = {
-      // TODO, NICK, is this complete?
       machine.pushKont(KTryCatchHandler(machine, handler))
       machine.ctrl = body
     }
