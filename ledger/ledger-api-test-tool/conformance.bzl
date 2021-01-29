@@ -17,6 +17,7 @@ def conformance_test(
         test_tool_args = [],
         tags = [],
         runner = "@//bazel_tools/client_server/runner_with_port_check:runner",
+        dar_files = "//ledger/test-common:dar-files",
         flaky = False):
     client_server_test(
         name = name,
@@ -26,7 +27,7 @@ def conformance_test(
         client = "//ledger/ledger-api-test-tool",
         client_args = test_tool_args + ["localhost:%s" % port for port in ports],
         data = extra_data + [
-            "//ledger/test-common:dar-files",
+            dar_files,
         ],
         server = server,
         server_args = server_args,

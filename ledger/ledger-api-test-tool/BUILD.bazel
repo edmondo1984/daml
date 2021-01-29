@@ -243,3 +243,16 @@ conformance_test(
         "--include=IdentityIT:IdNotEmpty",
     ],
 )
+
+conformance_test(
+    name = "damlf-dev-version",
+    dar_files = "//ledger/test-common:dev-dar-files",
+    server = "//ledger/ledger-on-memory:app",
+    server_args = [
+        "--contract-id-seeding=testing-weak",
+        "--participant participant-id=test-name,port=6865",
+    ],
+    test_tool_args = [
+        "--verbose",
+    ],
+)
