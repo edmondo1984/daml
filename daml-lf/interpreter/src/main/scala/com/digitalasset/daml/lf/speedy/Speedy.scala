@@ -1270,7 +1270,8 @@ private[lf] object Speedy {
       with SomeArrayEquals {
     def execute(payload: SValue) = {
       unwindToHandler(machine) match {
-        case None => throw DamlEUserError("Unhandled-Throw")
+        case None =>
+          throw DamlEUserError("Unhandled-Throw") // NICK, add a new case for unhandled exception?
         case Some(handler) =>
           //println("KThrow::execute(), unwindToHandler() returned TRUE")
           machine.pushEnv(payload) //payload on the stack

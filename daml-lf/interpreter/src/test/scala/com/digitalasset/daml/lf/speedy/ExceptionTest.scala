@@ -7,6 +7,7 @@ import com.daml.lf.PureCompiledPackages
 import com.daml.lf.data
 import com.daml.lf.language.Ast.{Expr, Package}
 import com.daml.lf.speedy.Compiler.FullStackTrace
+import com.daml.lf.speedy.SValue._
 import com.daml.lf.speedy.SError._
 import com.daml.lf.speedy.SResult.{SResultFinalValue, SResultError}
 import com.daml.lf.testing.parser.Implicits._
@@ -17,18 +18,38 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyChecks {
 
-  "simple" should {
+  "basic throw/catch" should {
 
     val pkgs: PureCompiledPackages = noPackages
 
     val testCases = Table[String, Long](
-      ("expression", "expected"),
-      ("RUN_UPDATE @Int64 (upure @Int64 42)", 42),
+      ("expression", "number"),
+      ("42", 42),
+      ("RUN_UPDATE (try @t (upure @t 42) catch e -> 99)", 42),
+      ("RUN_UPDATE (try @t (upure @t (throw @t @t 11)) catch e -> Some @t (upure @t 99))", 99),
     )
 
-    forEvery(testCases) { (exp: String, expected: Long) =>
+    forEvery(testCases) { (exp: String, num: Long) =>
+      s"eval[$exp] --> $num" in {
+        val expected: SResult = SResultFinalValue(SValue.SInt64(num))
+        runExpr(pkgs)(e"$exp") shouldBe expected
+      }
+    }
+  }
+
+  "unhandled throw" should {
+
+    val pkgs: PureCompiledPackages = noPackages
+
+    val testCases = Table[String, SResult](
+      ("expression", "result"),
+      ("42", SResultFinalValue(SInt64(42))),
+      ("throw @t @t 111", SResultError(DamlEUserError("Unhandled-Throw"))),
+    )
+
+    forEvery(testCases) { (exp: String, expected: SResult) =>
       s"eval[$exp] --> $expected" in {
-        runExpr(pkgs)(e"$exp") shouldBe Right(SValue.SInt64(expected))
+        runExpr(pkgs)(e"$exp") shouldBe expected
       }
     }
   }
@@ -78,9 +99,10 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
       ("M:throwCatchTest 4", 7004),
     )
 
-    forEvery(testCases) { (exp: String, expected: Long) =>
-      s"eval[$exp] --> $expected" in {
-        runExpr(pkgs)(e"$exp") shouldBe Right(SValue.SInt64(expected))
+    forEvery(testCases) { (exp: String, num: Long) =>
+      s"eval[$exp] --> $num" in {
+        val expected: SResult = SResultFinalValue(SValue.SInt64(num))
+        runExpr(pkgs)(e"$exp") shouldBe expected
       }
     }
   }
@@ -95,15 +117,8 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
     )
   }
 
-  private def runExpr(pkgs1: PureCompiledPackages)(e: Expr): Either[SError, SValue] = {
-    val machine = Speedy.Machine.fromPureExpr(pkgs1, e)
-    machine.run() match {
-      case SResultFinalValue(v) => Right(v)
-      case SResultError(e) => Left(e)
-      case res => crash(s"runExpr, unexpected result $res")
-    }
+  private def runExpr(pkgs1: PureCompiledPackages)(e: Expr): SResult = {
+    Speedy.Machine.fromPureExpr(pkgs1, e).run()
   }
-
-  private def crash[A](reason: String): A = throw new RuntimeException(reason)
 
 }
