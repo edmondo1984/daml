@@ -431,15 +431,13 @@ private[lf] final class Compiler(
         SBFromAny(ty)(compile(e))
       case ETypeRep(typ) =>
         SEValue(STypeRep(typ))
-      case EFromAnyException(_, _) | EToAnyException(_, _) =>
+      case EFromAnyException(_, _) =>
         // TODO https://github.com/digital-asset/daml/issues/8020
         sys.error("exceptions not supported")
+      case EToAnyException(_, e) =>
+        compile(e) // NICK, do we need any run-time behavior for {From,To}AnyException?
       case EThrow(_, _, exp) =>
-        // TODO, NICK, need support for BMakeGeneralError etc to allow payload to be compiled
-        //SEThrow(compile(exp))
-        // so for now we'll just put in a unit -- it's ignored later anyway at the moment
-        val _ = exp
-        SEThrow(SEValue.Unit)
+        SEThrow(compile(exp))
     }
 
   @inline
@@ -558,9 +556,12 @@ private[lf] final class Compiler(
               BLess | BGreaterEq | BGreater | BLessNumeric | BLessEqNumeric | BGreaterNumeric |
               BGreaterEqNumeric | BEqualNumeric | BTextMapEmpty | BGenMapEmpty =>
             throw CompilationError(s"unexpected $bf")
-          case BMakeGeneralError | BMakeArithmeticError | BMakeContractError |
-              BAnyExceptionMessage | BGeneralErrorMessage | BArithmeticErrorMessage |
-              BContractErrorMessage =>
+
+          case BMakeGeneralError =>
+            SBMakeGeneralError //NICK, so far the only supported builtin error constructor
+
+          case BMakeArithmeticError | BMakeContractError | BAnyExceptionMessage |
+              BGeneralErrorMessage | BArithmeticErrorMessage | BContractErrorMessage =>
             // TODO https://github.com/digital-asset/daml/issues/8020
             sys.error("exception not supported")
         })
@@ -718,14 +719,13 @@ private[lf] final class Compiler(
         FetchByKeyDefRef(templateId)(compile(key))
 
       case UpdateTryCatch(_, body, binder, handler) =>
-        val _ = binder // TODO, need binder when payloads are supported
-        withEnv { _ => // NICK, what exactly is this for?
-          unaryFunction { tokenPos =>
-            SETryCatch(
-              app(compile(body), svar(tokenPos)),
-              deSome(compile(handler)),
-            )
-          }
+        unaryFunction { tokenPos =>
+          SETryCatch(
+            app(compile(body), svar(tokenPos)),
+            withBinders(binder) { _ =>
+              deSome(compile(handler))
+            },
+          )
         }
     }
 
@@ -1167,7 +1167,7 @@ private[lf] final class Compiler(
       case SETryCatch(body, handler) =>
         SETryCatch(
           closureConvert(remaps, body),
-          closureConvert(remaps, handler), //NICK, shift 1 for payload on stack?
+          closureConvert(shift(remaps, 1), handler),
         )
 
       case SELabelClosure(label, expr) =>
@@ -1259,7 +1259,7 @@ private[lf] final class Compiler(
         case SEThrow(expr) =>
           go(expr, bound, free)
         case SETryCatch(body, handler) =>
-          go(body, bound, go(handler, bound, free))
+          go(body, bound, go(handler, 1 + bound, free))
 
         case x: SEDamlException =>
           throw CompilationError(s"unexpected SEDamlException: $x")
@@ -1295,6 +1295,7 @@ private[lf] final class Compiler(
         case SVariant(_, _, _, value) => goV(value)
         case SEnum(_, _, _) => ()
         case SAny(_, v) => goV(v)
+        case SExceptionPacket(_, v) => goV(v)
         case _: SPAP | SToken | SStruct(_, _) =>
           throw CompilationError("validate: unexpected SEValue")
       }
@@ -1363,7 +1364,7 @@ private[lf] final class Compiler(
           go(expr)
         case SETryCatch(body, handler) =>
           go(body)
-          go(handler)
+          goBody(maxS + 1, maxA, maxF)(handler)
 
         case x: SEDamlException =>
           throw CompilationError(s"unexpected SEDamlException: $x")

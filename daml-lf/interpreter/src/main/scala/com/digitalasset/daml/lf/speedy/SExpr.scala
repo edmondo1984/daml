@@ -18,8 +18,6 @@ import com.daml.lf.speedy.Speedy._
 import com.daml.lf.speedy.SError._
 import com.daml.lf.speedy.SBuiltin._
 
-import scala.jdk.CollectionConverters._
-
 /** The speedy expression:
   * - de Bruijn indexed.
   * - closure converted.
@@ -375,34 +373,12 @@ object SExpr {
     }
   }
 
-  private def unwindToHandler(machine: Machine): Option[SExpr] = {
-    val catchIndex =
-      machine.kontStack.asScala.lastIndexWhere(_.isInstanceOf[KTryCatchHandler])
-    if (catchIndex >= 0) {
-      val kh = machine.kontStack.get(catchIndex).asInstanceOf[KTryCatchHandler]
-      machine.kontStack.subList(catchIndex, machine.kontStack.size).clear()
-      machine.env.subList(kh.envSize, machine.env.size).clear()
-      machine.envBase = machine.env.size
-      kh.restore()
-      Some(kh.handler)
-    } else
-      None
-  }
-
   /** Exceptions: Throw and Catch */
 
-  final case class SEThrow(expr: SExpr) extends SExpr {
+  final case class SEThrow(payload: SExpr) extends SExpr {
     def execute(machine: Machine): Unit = {
-      unwindToHandler(machine) match {
-        case None =>
-          throw DamlEUserError("Unhandled-Throw")
-        case Some(handler) =>
-          //println("SEThrow::unwindToHandler() returned TRUE")
-          def app(f: SExpr, a: SExpr) = SEApp(f, Array(a))
-          val payload: SExpr = SEValue(SText("dummy-payload"))
-          val appliedhandler: SExpr = app(handler, payload)
-          machine.ctrl = appliedhandler
-      }
+      machine.pushKont(KThrow(machine))
+      machine.ctrl = payload
     }
   }
 

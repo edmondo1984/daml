@@ -41,21 +41,31 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
            /\ (a: *). \(mes : Text) ->
              throw @a @GeneralError (MAKE_GENERAL_ERROR mes);
 
-         val myCatch : forall (a: *). (Text -> a) -> (Text -> a) -> a =
-           /\ (a: *). \ (handler: Text -> a) (body: Text -> a) ->
-             RUN_UPDATE @a (try @a (upure @a (body "body-unitish")) catch e -> Some @(Update a) (upure @a (handler "handler-unitish")));
+         val isPayLoad : AnyException -> Text -> Bool = \(e: AnyException) (mes: Text) ->
+           EQUAL @AnyException e (to_any_exception @GeneralError (MAKE_GENERAL_ERROR mes));
+
+         val extractPayload : AnyException -> Int64 = \(e: AnyException) ->
+           case (M:isPayLoad e "payload2") of True -> 2
+| False -> case (M:isPayLoad e "payload3") of True -> 3
+| False -> 1000000;
+
+         val myCatch : forall (a: *). (Int64 -> a) -> (Text -> a) -> a =
+           /\ (a: *). \ (handler: Int64 -> a) (body: Text -> a) ->
+             RUN_UPDATE @a
+              (try @a (upure @a (body "body-unitish"))
+               catch e -> Some @(Update a) (upure @a (handler (M:extractPayload e))));
 
          val throwCatchTest : (Int64 -> Int64) = \ (x: Int64) ->
            (ADD_INT64 1000
-            (M:myCatch @Int64 (\(u : Text) -> 100) (\(u : Text) ->
+            (M:myCatch @Int64 (\(pay : Int64) -> ADD_INT64 100 pay) (\(u : Text) ->
              ADD_INT64 2000
-              (M:myCatch @Int64 (\(u : Text) -> 200) (\(u : Text) ->
+              (M:myCatch @Int64 (\(pay : Int64) -> ADD_INT64 200 pay) (\(u : Text) ->
                ADD_INT64 4000
                 (case (EQUAL @Int64 x 1) of True -> x
-      | False -> case (EQUAL @Int64 x 2) of True -> M:myThrow @Int64 "throw2"
-      | False -> case (EQUAL @Int64 x 3) of True -> M:myThrow @Int64 "throw3"
+      | False -> case (EQUAL @Int64 x 2) of True -> M:myThrow @Int64 "payload2"
+      | False -> case (EQUAL @Int64 x 3) of True -> M:myThrow @Int64 "payload3"
       | False -> case (EQUAL @Int64 x 4) of True -> x
-      | False -> ERROR @Int64 "no-match1"))))));
+      | False -> 2000000))))));
 
        }
       """)
@@ -63,8 +73,8 @@ class ExceptionTest extends AnyWordSpec with Matchers with TableDrivenPropertyCh
     val testCases = Table[String, Long](
       ("expression", "expected"),
       ("M:throwCatchTest 1", 7001),
-      ("M:throwCatchTest 2", 3200),
-      ("M:throwCatchTest 3", 3200),
+      ("M:throwCatchTest 2", 3202),
+      ("M:throwCatchTest 3", 3203),
       ("M:throwCatchTest 4", 7004),
     )
 

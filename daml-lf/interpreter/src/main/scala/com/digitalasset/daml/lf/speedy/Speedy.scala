@@ -1050,7 +1050,7 @@ private[lf] object Speedy {
             _
           ) | SStruct(_, _) | SGenMap(_, _) | SRecord(_, _, _) | SAny(_, _) | STypeRep(_) | STNat(
             _
-          ) | _: SPAP | SToken =>
+          ) | _: SPAP | SToken | SExceptionPacket(_, _) =>
         crash("Match on non-matchable value")
     }
 
@@ -1250,12 +1250,43 @@ private[lf] object Speedy {
     }
   }
 
+  private def unwindToHandler(machine: Machine): Option[SExpr] = {
+    val catchIndex =
+      machine.kontStack.asScala.lastIndexWhere(_.isInstanceOf[KTryCatchHandler])
+    if (catchIndex >= 0) {
+      val kh = machine.kontStack.get(catchIndex).asInstanceOf[KTryCatchHandler]
+      machine.kontStack.subList(catchIndex, machine.kontStack.size).clear()
+      machine.env.subList(kh.envSize, machine.env.size).clear()
+      machine.envBase = machine.env.size
+      kh.restore()
+      Some(kh.handler)
+    } else
+      None
+  }
+
+  private[speedy] final case class KThrow(
+      machine: Machine
+  ) extends Kont
+      with SomeArrayEquals {
+    def execute(payload: SValue) = {
+      unwindToHandler(machine) match {
+        case None => throw DamlEUserError("Unhandled-Throw")
+        case Some(handler) =>
+          //println("KThrow::execute(), unwindToHandler() returned TRUE")
+          machine.pushEnv(payload) //payload on the stack
+          def app(f: SExpr, a: SExpr) = SEApp(f, Array(a))
+          machine.ctrl = app(handler, SEValue(payload)) // NICK: avoid constructing the app!
+      }
+
+    }
+  }
+
   /** A catch frame marks the point to which an exception (of type 'SErrorDamlException')
     * is unwound. The 'envSize' specifies the size to which the environment must be pruned.
     * If an exception is raised and 'KCatch' is found from kont-stack, then 'handler' is
     * evaluated. If 'KCatch' is encountered naturally, then 'fin' is evaluated.
     */
-  private[speedy] final case class KCatch(
+  private[speedy] final case class KCatch( // NICK: rename this to indicate this is for submit-fail
       machine: Machine,
       handler: SExpr,
       fin: SExpr,

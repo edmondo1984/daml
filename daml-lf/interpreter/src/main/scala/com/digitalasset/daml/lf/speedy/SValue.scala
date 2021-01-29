@@ -64,6 +64,8 @@ sealed trait SValue {
         throw SErrorCrash("SValue.toValue: unexpected SStruct")
       case SAny(_, _) =>
         throw SErrorCrash("SValue.toValue: unexpected SAny")
+      case SExceptionPacket(_, _) =>
+        throw SErrorCrash("SValue.toValue: unexpected SExceptionPacket")
       case STypeRep(_) =>
         throw SErrorCrash("SValue.toValue: unexpected STypeRep")
       case STNat(_) =>
@@ -103,6 +105,8 @@ sealed trait SValue {
         )
       case SAny(ty, value) =>
         SAny(ty, value.mapContractId(f))
+      case SExceptionPacket(tag, value) =>
+        SExceptionPacket(tag, value.mapContractId(f))
     }
 }
 
@@ -187,6 +191,12 @@ object SValue {
   }
 
   final case class SAny(ty: Type, value: SValue) extends SValue
+
+  final case class SExceptionPacket(
+      tag: String,
+      //ty: Type, // NICK: or do we need the ty?
+      value: SValue,
+  ) extends SValue
 
   // Corresponds to a DAML-LF Nat type reified as a Speedy value.
   // It is currently used to track at runtime the scale of the

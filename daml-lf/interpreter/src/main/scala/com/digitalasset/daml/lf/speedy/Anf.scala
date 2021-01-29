@@ -369,15 +369,14 @@ private[lf] object Anf {
         )
       }
       case SETryCatch(body0, handler0) =>
-        Bounce(() =>
-          flattenExp(depth, env, body0) { body =>
-            Bounce(() =>
-              flattenExp(depth, env, handler0) { handler =>
-                Bounce(() => transform(depth, SETryCatch(body.wrapped, handler.wrapped), k))
-              }
-            )
-          }
-        )
+        // we must not lift applications from either the body or the handler outside of
+        // the try-catch block, so we flatten each separately:
+        val body: SExpr = flattenExp(depth, env, body0)(anf => Land(anf.wrapped)).bounce
+        val handler: SExpr =
+          flattenExp(depth.incr(1), trackBindings(depth, env, 1), handler0)(anf =>
+            Land(anf.wrapped)
+          ).bounce
+        Bounce(() => transform(depth, SETryCatch(body, handler), k))
 
       case x: SEAbs => throw CompilationError(s"flatten: unexpected: $x")
       case x: SEDamlException => throw CompilationError(s"flatten: unexpected: $x")

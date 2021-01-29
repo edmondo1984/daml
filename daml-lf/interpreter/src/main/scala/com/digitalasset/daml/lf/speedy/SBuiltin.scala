@@ -1388,6 +1388,13 @@ private[lf] object SBuiltin {
     }
   }
 
+  /** $make-general-error :: Text -> GeneralError */
+  final case object SBMakeGeneralError extends SBuiltinPure(1) { //NICK: take ty as class arg
+    override private[speedy] final def executePure(args: util.ArrayList[SValue]): SValue = {
+      SExceptionPacket("GeneralError", args.get(0))
+    }
+  }
+
   /** $to_any
     *    :: t
     *    -> Any (where t = ty)
