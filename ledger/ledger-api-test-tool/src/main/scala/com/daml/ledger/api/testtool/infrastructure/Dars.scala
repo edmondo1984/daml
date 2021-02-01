@@ -3,6 +3,9 @@
 
 package com.daml.ledger.api.testtool.infrastructure
 
+import java.io.File
+import java.nio.file.Files
+
 import com.google.protobuf.ByteString
 
 import scala.collection.immutable
@@ -16,7 +19,9 @@ object Dars {
     "/ledger/test-common/semantic-tests.dar",
   )
 
-  def read(name: String): ByteString =
+  def readFromResource(name: String): ByteString =
     ByteString.readFrom(getClass.getResourceAsStream(name))
 
+  def readFromFile(file: File): ByteString =
+    ByteString.copyFrom(Files.readAllBytes(file.toPath))
 }

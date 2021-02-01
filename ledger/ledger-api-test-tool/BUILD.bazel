@@ -244,15 +244,24 @@ conformance_test(
     ],
 )
 
+# Test that runs the whole ledger API test suite with dev-version DARs
 conformance_test(
     name = "daml-lf-dev-version",
-    dar_files = "//ledger/test-common:dev-dar-files",
+    extra_data = [
+        "//ledger/test-common:model-tests-dev.dar",
+        "//ledger/test-common:performance-tests-dev.dar",
+        "//ledger/test-common:semantic-tests-dev.dar",
+    ],
     server = "//ledger/ledger-on-memory:app",
     server_args = [
+        "--dev-mode-unsafe",
         "--contract-id-seeding=testing-weak",
         "--participant participant-id=test-name,port=6865",
     ],
     test_tool_args = [
         "--verbose",
+        "--dar-file=$$(rlocation $$TEST_WORKSPACE/$(rootpath //ledger/test-common:model-tests-dev.dar))",
+        "--dar-file=$$(rlocation $$TEST_WORKSPACE/$(rootpath //ledger/test-common:performance-tests-dev.dar))",
+        "--dar-file=$$(rlocation $$TEST_WORKSPACE/$(rootpath //ledger/test-common:semantic-tests-dev.dar))",
     ],
 )

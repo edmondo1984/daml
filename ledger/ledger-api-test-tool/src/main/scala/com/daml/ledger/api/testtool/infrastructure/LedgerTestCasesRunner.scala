@@ -3,6 +3,7 @@
 
 package com.daml.ledger.api.testtool.infrastructure
 
+import java.io.File
 import java.util.concurrent.{ExecutionException, TimeoutException}
 import java.util.{Timer, TimerTask}
 
@@ -16,6 +17,7 @@ import com.daml.ledger.api.testtool.infrastructure.participant.{
   ParticipantSession,
   ParticipantTestContext,
 }
+import com.google.protobuf.ByteString
 import io.grpc.{Channel, ClientInterceptor}
 import org.slf4j.LoggerFactory
 
@@ -47,6 +49,7 @@ final class LedgerTestCasesRunner(
     timeoutScaleFactor: Double = 1.0,
     concurrentTestRuns: Int = 8,
     uploadDars: Boolean = true,
+    darPackages: List[File] = List.empty,
     identifierSuffix: String = "test",
     commandInterceptors: Seq[ClientInterceptor] = Seq.empty,
 ) {
@@ -123,11 +126,11 @@ final class LedgerTestCasesRunner(
   ): Future[Either[Result.Failure, Result.Success]] =
     result(start(test, session))
 
-  private def uploadDar(context: ParticipantTestContext, name: String)(implicit
+  private def uploadDar[T](context: ParticipantTestContext, name: T, load: T => ByteString)(implicit
       executionContext: ExecutionContext
   ): Future[Unit] = {
     logger.info(s"""Uploading DAR "$name"...""")
-    context.uploadDarFile(Dars.read(name)).andThen { case _ =>
+    context.uploadDarFile(load(name)).andThen { case _ =>
       logger.info(s"""Uploaded DAR "$name".""")
     }
   }
@@ -140,7 +143,12 @@ final class LedgerTestCasesRunner(
         .sequence(sessions.map { session =>
           for {
             context <- session.createInitContext("upload-dars", identifierSuffix)
-            _ <- Future.sequence(Dars.resources.map(uploadDar(context, _)))
+            _ <-
+              if (darPackages.isEmpty) {
+                Future.sequence(Dars.resources.map(uploadDar(context, _, Dars.readFromResource)))
+              } else {
+                Future.sequence(darPackages.map(uploadDar(context, _, Dars.readFromFile)))
+              }
           } yield ()
         })
         .map(_ => ())

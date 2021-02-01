@@ -206,6 +206,7 @@ object LedgerApiTestTool {
           timeoutScaleFactor = config.timeoutScaleFactor,
           concurrentTestRuns = concurrentTestRuns,
           uploadDars = config.uploadDars,
+          darPackages = config.darPackages,
           identifierSuffix = identifierSuffix,
         )
     )

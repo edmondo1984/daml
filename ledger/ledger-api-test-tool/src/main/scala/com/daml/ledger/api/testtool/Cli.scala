@@ -221,6 +221,14 @@ object Cli {
       .action((_, c) => c.copy(uploadDars = false))
       .text("Skip DARs upload into ledger before running tests")
 
+    opt[File]("dar-file")
+      .action((p, c) => c.copy(darPackages = c.darPackages :+ p))
+      .optional()
+      .unbounded()
+      .text(
+        "DAR file(s) to upload instead of the DAR files bundled with this executable. Can be speficied multiple times."
+      )
+
     help("help").text("Prints this usage text")
 
   }
