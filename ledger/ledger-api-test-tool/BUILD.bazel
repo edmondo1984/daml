@@ -245,7 +245,7 @@ conformance_test(
 )
 
 conformance_test(
-    name = "damlf-dev-version",
+    name = "daml-lf-dev-version",
     dar_files = "//ledger/test-common:dev-dar-files",
     server = "//ledger/ledger-on-memory:app",
     server_args = [

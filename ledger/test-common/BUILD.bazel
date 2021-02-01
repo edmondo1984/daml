@@ -38,22 +38,22 @@ da_scala_library(
 [
     [
         daml_compile(
-            name = "%s-tests%s" % (test_name, target_name),
+            name = "%s-tests%s" % (test_name, target_suffix),
             srcs = glob(["src/main/daml/%s/*.daml" % test_name]),
             target = target,
             visibility = ["//visibility:public"],
         ),
         dar_to_scala(
-            name = "%s-tests%s.scala-codegen" % (test_name, target_name),
-            srcs = [":%s-tests%s.dar" % (test_name, target_name)],
+            name = "%s-tests%s.scala-codegen" % (test_name, target_suffix),
+            srcs = [":%s-tests%s.dar" % (test_name, target_suffix)],
             package_prefix = "com.daml.ledger.test.%s" % test_name,
-            srcjar_out = "%s%s.scala.srcjar" % (test_name, target_name),
+            srcjar_out = "%s%s.scala.srcjar" % (test_name, target_suffix),
             verbosity = 2,
             visibility = ["//visibility:public"],
         ),
         da_scala_library(
-            name = "%s-tests%s.scala" % (test_name, target_name),
-            srcs = [":%s-tests%s.scala-codegen" % (test_name, target_name)],
+            name = "%s-tests%s.scala" % (test_name, target_suffix),
+            srcs = [":%s-tests%s.scala-codegen" % (test_name, target_suffix)],
             visibility = ["//visibility:public"],
             deps = [
                 "//language-support/scala/bindings",
@@ -71,7 +71,7 @@ da_scala_library(
         ),
         ("performance", []),
     ]
-    for (target, target_name) in [
+    for (target, target_suffix) in [
         (lf_stable_version, ""),
         (lf_dev_version, "-dev"),
     ]
